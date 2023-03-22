@@ -8,7 +8,7 @@
 #updates methodology for biomass/abundance estimates 
 
 # Erin Fedewa
-# last updated: 2022/8/29
+# last updated: 2023/3/20
 
 # load ----
 library(tidyverse)
@@ -40,8 +40,10 @@ sc_catch %>%
                filter(HAUL_TYPE ==3,
                       YEAR >= 1982) %>%
                distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
-                replace_na(list(CPUE = 0)) %>%
-  #join to stratum
+                replace_na(list(cpue_cnt = 0)) %>%
+                replace_na(list(ncrab = 0)) %>%
+
+#join to stratum
   left_join(strata_sc %>%
               select(STATION_ID, SURVEY_YEAR, STRATUM, TOTAL_AREA) %>%
               filter(SURVEY_YEAR >= 1982) %>%
@@ -60,5 +62,5 @@ ggplot(abundance, aes(y=ABUNDANCE_MIL, x=YEAR)) +
   geom_point() +
   geom_line()
 
-#Write csv as output 
+#Write csv as output (abundance in millions of crab)
 write.csv(abundance, file = ("./Output/BAS_response.csv"))
