@@ -6,7 +6,7 @@
 #TO DO: Use Mike MICE script to use imputed temperature timeseries for cold pool 
 
 # Erin Fedewa
-# last updated: 2022/8/28
+# last updated: 2022/8/18
 
 # load ----
 library(tidyverse)
@@ -46,7 +46,7 @@ avg_bt %>%
   geom_point() +
   geom_line()+
   labs(y = "Bottom temperature (C)", x = "") +
-  xlim(1980, 2022) +
+  xlim(1980, 2023) +
   theme_bw()
 
 #compute cold pool areal extent
@@ -65,7 +65,7 @@ cpa %>%
   geom_point() +
   geom_line()+
   labs(y = "Cold Pool Extent (nmi2)", x = "") +
-  xlim(1980, 2022) +
+  xlim(1980, 2023) +
   theme_bw()
 
 ###########################################
@@ -75,6 +75,7 @@ AO<- read_csv("./Data/Arctic_oscillation.csv")
 
 #Mean Winter Arctic Oscillation
 AO %>% 
+  pivot_longer(c(2:13), names_to="Month", values_to="Index") %>%
   filter(Year >= 1979,
          Month %in% c(1,2,3)) %>% 
   group_by(Year) %>%
@@ -87,7 +88,7 @@ mean_AO %>%
   geom_point() +
   geom_line()+
   labs(y = "Arctic Oscillation Index", x = "") +
-  xlim(1978, 2022) +
+  xlim(1978, 2023) +
   theme_bw()
 
 # combine indices and save output
