@@ -23,7 +23,7 @@ sc_catch <- read.csv("./Data/crabhaul_opilio.csv")
 ## compute cpue by size-sex group for each station
 sc_catch %>% 
   mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  filter(HAUL_TYPE == 3, 
+  filter(HAUL_TYPE != 17 , 
          SEX %in% 1:2,
          YEAR > 1987) %>%
   mutate(size_sex = ifelse(SEX == 1 & WIDTH_1MM < 95, "immature_male",

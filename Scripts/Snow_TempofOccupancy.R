@@ -1,7 +1,7 @@
 # notes ----
 #Calculate EBS snow crab temperatures of occupancy (CPUE weighted) 
 
-# Last Updated 8/28/22
+# Last Updated 8/20/23
 
 # load ----
 library(tidyverse)

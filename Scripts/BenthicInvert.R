@@ -38,7 +38,7 @@ sc_catch %>%
   right_join(sc_strata %>%
                filter(SURVEY_YEAR > 1987) %>%
                distinct(SURVEY_YEAR, STATION_ID, STRATUM, TOTAL_AREA) %>%
-               rename_all(~c("GIS_STATION", "YEAR",
+               rename_all(~c("YEAR", "GIS_STATION", 
                              "STRATUM", "TOTAL_AREA"))) %>%
   replace_na(list(CPUE = 0)) -> cpue
 

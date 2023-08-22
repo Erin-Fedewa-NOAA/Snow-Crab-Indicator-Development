@@ -2,7 +2,7 @@
 # Calculate population prevalence of disease code 2 (i.e. visually positive BCS) 
 
 # Erin Fedewa
-# last updated: 2023/3/20
+# last updated: 2023/8/20
 
 # load ----
 library(tidyverse)
@@ -54,7 +54,7 @@ rbind(cpue %>%
 #Now our BCS categories should each contain zero catch stations so we can group by 
   #bcs category to calculate abundances 
 
-#abundance by BCS categories
+#BCS prevelance, mature snow crab
 catch %>%
   right_join(strata_ebs %>%
                rename(GIS_STATION=STATION_ID, YEAR=SURVEY_YEAR)) %>%
@@ -104,7 +104,7 @@ cpue_imm %>%
           replace_na(list(ncrab = 0)) %>%
           replace_na(list(bcs = TRUE))) -> catch_imm
 
-#abundance by BCS categories
+#BCS prevalence, immature snow crab
 catch_imm %>%
   right_join(strata_ebs %>%
                rename(GIS_STATION=STATION_ID, YEAR=SURVEY_YEAR)) %>%
@@ -153,7 +153,7 @@ cpue_pop %>%
           replace_na(list(ncrab = 0)) %>%
           replace_na(list(bcs = TRUE))) -> catch_pop
 
-#abundance by BCS categories
+#BCS prevelance of entire population
 catch_pop %>%
   right_join(strata_ebs %>%
                rename(GIS_STATION=STATION_ID, YEAR=SURVEY_YEAR)) %>%
@@ -194,7 +194,7 @@ write.csv(bcs, file="./Output/bcs_prev.csv")
     theme(axis.title.y = element_text(size=14)) +
     theme(axis.text.x=element_text(size=14), axis.text.y=element_text(size=12)) +
     theme(legend.title= element_blank()) +
-    scale_x_continuous(limits = c(1988, 2022), breaks = seq(1990, 2022, 5))
+    scale_x_continuous(limits = c(1988, 2023), breaks = seq(1990, 2023, 5))
 
 #Faceted plot 
 bcs %>%
@@ -208,7 +208,7 @@ bcs %>%
   theme(axis.title.y = element_text(size=14)) +
   theme(axis.text.x=element_text(size=10), axis.text.y=element_text(size=12)) +
   theme(legend.title= element_blank()) +
-  scale_x_continuous(limits = c(1988, 2022), breaks = seq(1990, 2022, 5)) +
+  scale_x_continuous(limits = c(1988, 2023), breaks = seq(1990, 2023, 5)) +
   facet_wrap(~Maturity)
 
 #Just population
@@ -223,7 +223,7 @@ bcs %>%
   theme(axis.title.y = element_text(size=14)) +
   theme(legend.position="none") +
   theme(axis.text.x=element_text(size=14), axis.text.y=element_text(size=12)) +
-  scale_x_continuous(limits = c(1988, 2022), breaks = seq(1990, 2022, 5))
+  scale_x_continuous(limits = c(1988, 2023), breaks = seq(1990, 2023, 5))
 ggsave("bcs.png")
 
 

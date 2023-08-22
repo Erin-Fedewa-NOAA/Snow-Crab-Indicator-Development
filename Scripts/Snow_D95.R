@@ -2,7 +2,7 @@
 # Calculate "D95" for each size sex group in EBS 1988 - 2022:
       #area of stations that make up 95% of the cumulative cpue
 
-# last updated: 2022/9/5
+# last updated: 2023/8/20
 
 # load ----
 library(tidyverse)
@@ -29,7 +29,7 @@ sc_catch %>%
 ## compute cpue by size-sex group for each station
 sc_catch %>% 
   mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  filter(HAUL_TYPE == 3, 
+  filter(HAUL_TYPE != 17, 
          SEX %in% 1:2,
          YEAR > 1987) %>%
   mutate(size_sex = ifelse(SEX == 1 & WIDTH_1MM < 95, "immature_male",
