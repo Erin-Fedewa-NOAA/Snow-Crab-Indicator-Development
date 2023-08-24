@@ -4,6 +4,11 @@
 
 # last updated: 2023/8/20
 
+#Follow up for 2024: 
+  #how to address handful of missing stations? -currently using only stations sampled every yr
+  #Use size at 50% maturity as male maturity cutline for each year 
+  #Plot these trends alongside abundance 
+
 # load ----
 library(tidyverse)
 
@@ -86,8 +91,6 @@ d95 %>%
     pivot_wider(names_from = "size_sex", values_from = "d95") %>%
   write.csv(file="./Output/D95_output.csv")
   
-#Note to follow up on: how to address handful of missing stations in early
-  #timeseries using this approach? - could use only stations sampled every yr
-  #in timeseries (see spatial opie ms script)
+
 
   

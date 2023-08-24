@@ -3,6 +3,9 @@
 
 # Last Updated 8/20/23
 
+#Updates to incorporate for 2024: 
+#Use size at 50% maturity as male maturity cutline for each year 
+
 # load ----
 library(tidyverse)
 

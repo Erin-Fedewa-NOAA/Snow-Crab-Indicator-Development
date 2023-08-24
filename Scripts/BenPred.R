@@ -5,6 +5,10 @@
 # Erin Fedewa
 # last updated: 2022/9/24
 
+#Updates for 2024:
+  #Use 50% SAM as cutline for male maturity in EBS
+  #How to account for 2018 and 2023 different grids for NBS prevalence? 
+
 # load ----
 library(tidyverse)
 

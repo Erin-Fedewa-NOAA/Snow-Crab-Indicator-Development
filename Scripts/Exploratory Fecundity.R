@@ -59,7 +59,7 @@ ggplot() +
 #Proportion of mature females by clutch size (proxy for fecundity?)
 sc_catch %>%
   mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  filter(HAUL_TYPE == 3,
+  filter(HAUL_TYPE != 17,
          SEX == 2,
          CLUTCH_SIZE > 0,
          YEAR >= 1988) %>%
@@ -101,10 +101,8 @@ right_join(sc_catch %>%
                mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
                filter(HAUL_TYPE ==3,
                       YEAR >= 1988) %>%
-               distinct(YEAR, GIS_STATION, AREA_SWEPT) %>%
-             female_ebs_spec %>%
-                expand_grid(distinct(CLUTCH_TEXT, SHELL_CONDITION))) %>%
-  replace_na(list(CPUE = 0)) -> catch
+               distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
+               replace_na(list(cpue = 0)) -> catch
   
 
 #join to stratum
@@ -126,14 +124,14 @@ catch %>%
 
 #Calculate proportion full  
 fem_abundance %>%
-  group_by(YEAR,SHELL_CONDITION) %>%
+  group_by(YEAR, SHELL_CONDITION) %>%
   summarise(Prop_full = (ABUNDANCE_MIL[CLUTCH_TEXT=="Full"]/ABUNDANCE_MIL[CLUTCH_TEXT=="All"])) -> full
 
 #Plot
-fem_abundance %>%
+full %>%
   ggplot() +
   geom_point(aes(x= YEAR, y=Prop_full)) + 
-  geom_line(aes(x= YEAR, y=Prop_full))
+  geom_line(aes(x= YEAR, y=Prop_full)) +
   facet_wrap(~SHELL_CONDITION)
 
 

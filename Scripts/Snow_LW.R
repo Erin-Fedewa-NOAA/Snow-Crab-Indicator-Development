@@ -3,6 +3,11 @@
 # Erin Fedewa
 # last updated: 2022/8/26
 
+#Update for future applications:
+  #Use Szuwalski et al approach to fit GAMS with carapace width and collection temps
+  #to estimate crab weight (i.e. account for variation in molt timing)
+
+#However, NPRB condition work does not support weight as a direct proxy for condition 
 
 #########
 

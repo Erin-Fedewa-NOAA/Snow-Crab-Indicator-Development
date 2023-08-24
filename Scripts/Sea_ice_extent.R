@@ -1,167 +1,55 @@
 # notes ----
-# Produce ice cover time series for Bering (55-64N, 180-160W)
+# Bering Sea ice concentration via ORAS5: http://apdrc.soest.hawaii.edu/erddap/griddap/hawaii_soest_eed0_4cbd_14b1.html
 
-# last updated: 2022/8/22
-#Script written by Mike Litzow
+# last updated: 2023/8/23
 
-#To do: Move this script to tidync!!! 
-#Move to ORAS5 as source data: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-oras5?tab=overview
-#Better resolution in earlier timeseries years 
+#This script needs follow ups in 2024!! 
+  #The original snow crab sea ice indicator used data from ERA5. These data were downloaded in 
+  #2023 via https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-oras5?tab=overview 
+  #(see ERA5 sea ice folder) but unsure of how to combine monthly average and spatially subset
+  #Approach #2 for 2023 after this failed was to use a NOAA ERDDAP (http://apdrc.soest.hawaii.edu/erddap/griddap/index.html?page=1&itemsPerPage=1000)
+  #to pull data but there seems to be an issue with the file itself (can't open) - but these data only go to 2018?
+  #Final dataset used in 2023 snow crab report card is NOAA@NSIDC data (https://nsidc.org/data/g02135/versions/3#anchor-1)
+  #Get data -> seaice_analysis -> Sea_Ice_Index_Regional_Monthly (pulled Bering Sea data tab)
 
 # load ----
-
 library(tidyverse)
-library(ncdf4)
-library(zoo)
-library(maps)
-library(mapdata)
-library(chron)
-library(fields)
-library(oce)
+library(tidync)
+library(lubridate)
+library(magrittr)
+
+#Using NOAA SWFSC ERDDAP to pull data 
+download.file(url = "http://apdrc.soest.hawaii.edu/erddap/griddap/hawaii_soest_eed0_4cbd_14b1.htmlTable?ileadfra[(2018-12-15T00:00:00Z):1:(2018-12-15T00:00:00Z)][(55.5):1:(65.5)][(160):1:(180)]",
+              mode="wb",
+              destfile = "./Data/erddap_sea_ice.nc")
     
     
 ##Process ------------------------
-    
-# note that there are separate time series for 1950-1978 and 1979-present
-    
-nc1 <- nc_open("./Data/ERA5_ice_1950-1978.nc")
-    
-ncvar_get(nc1, "time")   # hours since 1-1-1900
-raw <- ncvar_get(nc1, "time")
-h <- raw/24
-d1 <- dates(h, origin = c(1,1,1900))
-m1 <- months(d1)
-yr1 <- years(d1)
-    
-x1 <- ncvar_get(nc1, "longitude")
-y1 <- ncvar_get(nc1, "latitude")
-    
-ice1 <- ncvar_get(nc1, "siconc", verbose = F)
-dim(ice1) # 87 long, 37 lat, 203 months
-    
-# reverse lat for plotting
-ice1 <- ice1[,37:1,]
-    
-# reverse y too
-y1 <- rev(y1)
-    
-ice1 <- aperm(ice1, 3:1)
-    
-ice1 <- matrix(ice1, nrow=dim(ice1)[1], ncol=prod(dim(ice1)[2:3]))
-    
-#plot to check
-ice.mean <- colMeans(ice1, na.rm=T)
-z <- t(matrix(ice.mean,length(y1)))
-image.plot(x1,y1,z, col=oceColorsPalette(64), xlab = "", ylab = "")
-contour(x1, y1, z, add=T)
-map('world2Hires', c('usa', 'USSR'),  fill=T,add=T, lwd=1, col="lightyellow3")  
-    
-# now the second time series
-nc2 <- nc_open("./Data/ERA5_ice_1979-2022.nc")
-    
-ncvar_get(nc2, "time")   # hours since 1-1-1900
-raw <- ncvar_get(nc2, "time")
-h <- raw/24
-d2 <- dates(h, origin = c(1,1,1900))
-m2 <- months(d2)
-yr2 <- years(d2)
-    
-x2 <- ncvar_get(nc2, "longitude")
-y2 <- ncvar_get(nc2, "latitude")
-    
-expver <-  ncvar_get(nc2, "expver", verbose = F)
-expver # 1 and 5??
-    
-ice2 <- ncvar_get(nc2, "siconc", verbose = F)
-dim(ice2) # 87 long, 37 lat, 2 expver, 203 months
-    
-# expver1 - this is ERA5
-ice2 <- ice2[,,1,]
-    
-# reverse lat for plotting
-ice2 <- ice2[,37:1,]
-    
-# reverse y too
-y2 <- rev(y2)
-    
-ice2 <- aperm(ice2, 3:1)
-    
-ice2 <- matrix(ice2, nrow=dim(ice2)[1], ncol=prod(dim(ice2)[2:3]))
-    
+
+ice <- tidync("./Data/erddap_sea_ice.nc") %>% hyper_tibble()
+  head(ice)
   
-# plot to check
-ice.mean <- colMeans(ice2, na.rm=T)
-z <- t(matrix(ice.mean,length(y2)))
-image.plot(x2,y2,z, col=oceColorsPalette(64), xlab = "", ylab = "")
-contour(x2, y2, z, add=T)
-map('world2Hires', c('usa', 'USSR'),  fill=T,add=T, lwd=1, col="lightyellow3")  
-    
-# check dimensions
-identical(x1, x2)
-identical(y1,y2)
-    
-# Keep track of corresponding latitudes and longitudes of each column:
-lat <- rep(y1, length(x1))
-lon <- rep(x1, each = length(y1))
-    
-ice <- rbind(ice1, ice2)
-    
-# drop E of 165 and N of 63
-drop <- lon > -165 | lat > 63
-ice[,drop] <- NA
-    
-# plot to check
-ice.mean <- colMeans(ice, na.rm=T)
-z <- t(matrix(ice.mean,length(y1)))
-image.plot(x1,y1,z, col=oceColorsPalette(64), xlab = "", ylab = "")
-contour(x1, y1, z, add=T)
-map('world2Hires', c('usa', 'USSR'),  fill=T,add=T, lwd=1, col="lightyellow3") # perfecto
-    
-dimnames(ice) <- list(as.character(c(d1, d2)), paste("N", lat, "E", lon, sep=""))
-    
-f <- function(x) colMeans(x, na.rm = T)
-    
-m <- c(as.character(m1), as.character(m2))
-    
-yr <- c(as.numeric(as.character(yr1)), as.numeric(as.character(yr2)))
-    
-means <- data.frame(month = m,
-                        year = as.numeric(as.character(yr)),
-                        ice = rowMeans(ice, na.rm = T)) 
-    
-ggplot(means, aes(year, ice, color = month)) +
-    geom_line()
-    
-# drop Oct - Dec
-means <- means %>%
-  filter(!month %in% c("Oct", "Nov", "Dec"))
-    
-# pivot wider
-means <- means %>% 
-      pivot_wider(values_from = ice, names_from = month) %>%
-      filter(year %in% 1953:2022) # fixed values through 1952, 2022 incomplete!
-    
-means[,2:5] <- apply(means[,2:5], 2, scale)
-    
-plot <- means %>%
-    pivot_longer(cols = -year)
-    ggplot(plot, aes(year, value, color = name)) +
-      geom_line()
+#Hmmm...why is this not working??
+  
+#Ughhh let's move on to NSIDC data 
+  
+betterdat <- read.csv("./Data/NSIDC_sea_ice_extent.csv")
 
-# generate Jan and Mar-Apr means
-means$Jan_ice <- apply(means[,2], 1, mean)
-means$MarApr_ice <- apply(means[,4:5], 1, mean)
+#Tidy up and take winter (Jan-Feb) average
+betterdat %>%
+  pivot_longer(c(2:13), names_to="month", values_to="ice_extent") %>%
+  filter(month %in% c("January_area", "February_area")) %>%
+  group_by(Year) %>%
+  summarize(JanFeb_avg = mean(ice_extent,  na.rm=T)) -> ice_extent
 
-#####FOLLOW UP: Pull new data and use Jan-Feb average instead of just Jan!!!
-    
-# clean up
-means <- means %>%
-  select(year, Jan_ice, MarApr_ice)
-    
-plot <- means %>%
-      pivot_longer(cols = -year)
-    ggplot(plot, aes(year, value, color = name)) +
-      geom_line()
+#Plot 
+ice_extent %>%
+  ggplot(aes(Year, JanFeb_avg)) +
+  geom_point() +
+  geom_line()
+
+#Write output for sea ice indicator     
+ice_extent %>%
+  write.csv(file="./Output/NSIDCseaice_output.csv")
  
-# save 
-write.csv(means, "./Output/seaice_output.csv", row.names = F)
+    

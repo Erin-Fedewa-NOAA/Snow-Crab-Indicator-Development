@@ -1,7 +1,10 @@
 #notes ----
 #Snow Crab Latitude center of abundance in EBS by size/sex category
 
-#Last update: 8/28/22
+#Updates to incorporate for 2024: 
+  #Use size at 50% maturity as male maturity cutline for each year 
+
+#Last update: 8/22/23
 
 #load----
 library(tidyverse)
