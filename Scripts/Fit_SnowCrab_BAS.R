@@ -9,7 +9,10 @@
 #
 #==================================================================================================
 #NOTES:
-#
+#2023 Snow Crab Indicator dataset is raw data from the webservice, so requires some wrangling
+#Response variable one, male survey abundance output is produced via seperate script
+#Response variable two, recruitment output from last approved model is provided by snow crab assmt author
+  #These two datasets are then merged with the indicator timeseries for the BAS analysis 
 #==================================================================================================
 #TIMING:
 #Initial run May 2022, model run by Curry
@@ -79,12 +82,15 @@ q_0.975 <- function(x) { return(quantile(x, probs=0.975)) }
 #Read Data
 dat <- read.csv("./Data/snow_BAS_indicators.csv")
 
-#Assign Lags for indicators 
+#Add in our response variables 
+
+#Assign Lags for indicators - see metadata file in repo for rationales for lags
 dat %>%
   filter(year>1988) %>%
   mutate(cp_lag = lag(cp_extent, n=3),
          ao_lag = lag(Mean_AO, n=6),
          ice_lag = lag(Jan_ice, n=3),
+         #add BCS and snow crab condition
          consump_lag = lag(Pcod_consumption, n=3)) %>%
   select(-cp_extent, -Mean_AO, -Jan_ice, -Pcod_consumption) -> dat1
 
@@ -430,6 +436,8 @@ plot(gbm.fit, i.var=3)
 # 
 #=========================================
 #### MODEL RUN 2: Using recruitment model output from 2021 approved stock assmt model 
+  #Recognizing that this approach really limits our temporal coverage b/c this is the previous year's
+  #approved model and year prior to that recruitment estimates are unreliable, so not included 
 
 #Assign Lags for indicators 
 dat %>%

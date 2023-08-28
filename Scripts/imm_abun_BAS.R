@@ -3,12 +3,11 @@
   #Size range selected using BSFRF selectivity curves and St. Marie 1995 size at 
   #age estimates (~5.7-6.7 years post settlement)
 
-#NOTE: this is using area calculated by only stations towed in a given year, 
-#NOT a standard area across the timeseries. Will need to be updated once SAP
-#updates methodology for biomass/abundance estimates 
+#To update for 2024: Use upper size threshold as size at 50% maturity? Or does this make it too difficult to
+  #assign lags with potentially multiple cohorts/year classes?
 
 # Erin Fedewa
-# last updated: 2023/3/20
+# last updated: 2023/8/27
 
 # load ----
 library(tidyverse)
