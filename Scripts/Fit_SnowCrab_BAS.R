@@ -2,7 +2,8 @@
 #Project Name: ECOSYSTEM AND SOCIOECONOMIC PROFILES - Snow Crab
 #
 #Creator: Dr. Curry James Cunningham, UAF, CFOS
-#Date: 5.8.22
+#With additions from E. Fedewa
+#Date: 8/27/23
 #
 #Purpose: To evaluate linkages between recruitment and a standard set of atmospheric, oceanographic, 
 #           and biological indicators of ecosystem status for the Ecosystem and Socioeconomic Profiles (ESPs).
@@ -16,7 +17,7 @@
 #==================================================================================================
 #TIMING:
 #Initial run May 2022, model run by Curry
-#Follow up runs with new indicators/modeled rec response in Sept 2022, model run by Erin
+#Follow up runs with new indicators/modeled rec response in Sept 2023, model run by Erin
 ##==================================================================================================
 require(tidyverse)
 require(corrplot)
@@ -43,7 +44,7 @@ fit <- TRUE
 offset <- 0
 
 #Define Model Name
-model <- "BAS_V2_Sep1_2022" # Fall 2022 Snow Crab ESP
+model <- "BAS_Sep_2023" # Fall 2023 Snow Crab ESP
 
 
 #Update location references for figs and outputs
@@ -53,12 +54,12 @@ dir.figs <- file.path(dir.figs, model)
 dir.create(dir.figs, recursive=TRUE)
 
 #For Data
-if(model=="BAS_V2_Sep1_2022") {
-  years <- c(1989:2019,2021)
+if(model=="BAS_Sep_2023") {
+  years <- c(1989:2019,2021:2023)
   n.years <- length(years)
 }
 
-if(model!="BAS_V2_Sep1_2022") {
+if(model!="BAS_Sep_2023") {
   years <- NULL
   n.years <- NULL
   stop(paste("WRONG model:", model))
@@ -79,10 +80,20 @@ q_0.975 <- function(x) { return(quantile(x, probs=0.975)) }
 #=============================================================
 #### MODEL RUN 1: Using design-based BT survey estimate for male recruitment as response
 
-#Read Data
-dat <- read.csv("./Data/snow_BAS_indicators.csv")
+#Read Indicator Data and response variables 
+dat_snow <- read.csv("./Data/snow_2023_indicators.csv") #need this file from Kalei!
+r1_survey <- read.csv("./Output/BAS_response")
+r2_model <- read.csv("./Output/modeloutput_recruits")
 
-#Add in our response variables 
+#Data wrangling of webservice indicator data 
+dat_snow %>%
+  select(YEAR, INDICATOR_NAME, DATA_VALUE, INDICATOR_TYPE) %>%
+  filter(INDICATOR_TYPE != "Socioeconomic") %>%
+  select(-INDICATOR_TYPE) %>%
+  pivot_wider(names_from="INDICATOR_NAME", values_from="DATA_VALUE") %>%
+  #add in response variable, "imm_abun"
+  
+#Look at temporal coverage of indicators 
 
 #Assign Lags for indicators - see metadata file in repo for rationales for lags
 dat %>%
@@ -95,7 +106,7 @@ dat %>%
   select(-cp_extent, -Mean_AO, -Jan_ice, -Pcod_consumption) -> dat1
 
 #Determine Covariates
-if(model=="BAS_V2_Sep1_2022") {
+if(model=="BAS_Sep_2023") {
   covars <- names(dat1)[-which(names(dat) %in% c("year", "imm_abund","model_recruit"))]
 }
 n.cov <- length(covars)
@@ -108,7 +119,7 @@ dat.2 <- dat1 %>%
 hist(log(dat.2$consump_lag))
 hist(log(dat.2$bcs_imm))
 
-if(model=="BAS_V2_Sep1_2022") {
+if(model=="BAS_Sep_2023") {
   dat.2$consump_lag <- log(dat.2$consump_lag)
   dat.2$bcs_imm <- log(dat.2$bcs_imm)
 }
@@ -148,7 +159,7 @@ apply(dat.4, 2, sd, na.rm=TRUE)
 # }
 
 # Subset Data for Fitting =====================================
-if(model=="BAS_V2_Sep1_2022") {
+if(model=="BAS_Sep_2023") {
   dat.fit <- dat.4 %>% dplyr::select(-c("imm_abund", "model_recruit"))
   dat.fit.list <- dat.fit %>% gather(key='var', value='value', -year)
 }  
@@ -438,6 +449,9 @@ plot(gbm.fit, i.var=3)
 #### MODEL RUN 2: Using recruitment model output from 2021 approved stock assmt model 
   #Recognizing that this approach really limits our temporal coverage b/c this is the previous year's
   #approved model and year prior to that recruitment estimates are unreliable, so not included 
+# Also note from Cody: "These are recruits dropping primarily into the range of 25-40mm carapace width.
+  #There's a lot wonky with this model, so I wouldn't put too much stock in it. 
+  #You could probably knock off the last two years of recruits and be good. 
 
 #Assign Lags for indicators 
 dat %>%
@@ -449,7 +463,7 @@ dat %>%
   select(-cp_extent, -Mean_AO, -JanFeb_ice, -Pcod_consumption) -> dat1
 
 #Determine Covariates
-if(model=="BAS_V2_Sep1_2022") {
+if(model=="BAS_Sep_2023") {
   covars <- names(dat1)[-which(names(dat) %in% c("year", "imm_abund","model_recruit"))]
 }
 n.cov <- length(covars)
@@ -462,7 +476,7 @@ dat.2 <- dat1 %>%
 hist(log(dat.2$consump_lag))
 hist(log(dat.2$bcs_imm))
 
-if(model=="BAS_V2_Sep1_2022") {
+if(model=="BAS_Sep_2023") {
   dat.2$consump_lag <- log(dat.2$consump_lag)
   dat.2$bcs_imm <- log(dat.2$bcs_imm)
 }
@@ -484,7 +498,7 @@ apply(dat.4, 2, sd, na.rm=TRUE)
 # }
 
 # Subset Data for Fitting =====================================
-if(model=="BAS_V2_Sep1_2022") {
+if(model=="BAS_Sep_2023") {
   dat.fit <- dat.4 %>% dplyr::select(-c("imm_abund", "model_recruit"))
   dat.fit.list <- dat.fit %>% gather(key='var', value='value', -year)
 }  
