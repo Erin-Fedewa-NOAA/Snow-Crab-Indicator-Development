@@ -14,6 +14,9 @@
 #Response variable one, male survey abundance output is produced via seperate script
 #Response variable two, recruitment output from last approved model is provided by snow crab assmt author
   #These two datasets are then merged with the indicator timeseries for the BAS analysis 
+
+#Follow ups for 2023: Re-assess lags/mechanisms, run with model output, use Krista Oke's 
+  #additional tests: DFA's, GAM's, boosted regression trees 
 #==================================================================================================
 #TIMING:
 #Initial run May 2022, model run by Curry
@@ -55,7 +58,7 @@ dir.create(dir.figs, recursive=TRUE)
 
 #For Data
 if(model=="BAS_Sep_2023") {
-  years <- c(1989:2019,2021:2023)
+  years <- c(1988:2019,2021:2023)
   n.years <- length(years)
 }
 
@@ -81,9 +84,9 @@ q_0.975 <- function(x) { return(quantile(x, probs=0.975)) }
 #### MODEL RUN 1: Using design-based BT survey estimate for male recruitment as response
 
 #Read Indicator Data and response variables 
-dat_snow <- read.csv("./Data/snow_2023_indicators.csv") #need this file from Kalei!
-r1_survey <- read.csv("./Output/BAS_response")
-r2_model <- read.csv("./Output/modeloutput_recruits")
+dat_snow <- read.csv("./Data/snow_2023_indicators.csv")
+r1_survey <- read.csv("./Output/BAS_response.csv")
+r2_model <- read.csv("./Output/modeloutput_recruits.csv")
 
 #Data wrangling of webservice indicator data 
 dat_snow %>%
@@ -91,48 +94,89 @@ dat_snow %>%
   filter(INDICATOR_TYPE != "Socioeconomic") %>%
   select(-INDICATOR_TYPE) %>%
   pivot_wider(names_from="INDICATOR_NAME", values_from="DATA_VALUE") %>%
-  #add in response variable, "imm_abun"
+  #add in response variables
+  left_join(r1_survey, by="YEAR") %>%
+  left_join((r2_model %>% rename("YEAR"="Year")), by="YEAR") %>%
+  rename("imm_survey_abun"="ABUNDANCE_MIL", "recruits_model_output"="Recruits") -> snowindic
   
 #Look at temporal coverage of indicators 
+snowindic %>%
+  select(!c(imm_survey_abun, recruits_model_output)) %>%
+  pivot_longer(c(2:13), names_to="indicator", values_to="value") %>%
+  ggplot(aes(YEAR, indicator, size=value)) +
+    geom_point() +
+    theme_bw()
+#Lets drop snow crab condition and chla below, as they will constrain BAS due to short timeseries
+  #We'll also drop any spatial distribution indicators, as these are not drivers of recruitment 
 
 #Assign Lags for indicators - see metadata file in repo for rationales for lags
-dat %>%
-  filter(year>1988) %>%
-  mutate(cp_lag = lag(cp_extent, n=3),
-         ao_lag = lag(Mean_AO, n=6),
-         ice_lag = lag(Jan_ice, n=3),
-         #add BCS and snow crab condition
-         consump_lag = lag(Pcod_consumption, n=3)) %>%
-  select(-cp_extent, -Mean_AO, -Jan_ice, -Pcod_consumption) -> dat1
+snowindic %>%
+  select(-c(AMJ_Chlorophylla_Biomass_SEBS_Satellite, Summer_Snow_Crab_Juvenile_Condition_SEBS_Survey,
+            Summer_Snow_Crab_Male_Center_Distribution_SEBS_Survey, Summer_Snow_Crab_Male_Area_Occupied_SEBS_Survey,
+            Annual_Snow_Crab_Male_Size_Maturity_Model)) %>%
+  filter(YEAR>=1988) %>%
+  mutate(cp_lag = lag(Summer_Cold_Pool_SEBS_Survey, n=4, order_by = YEAR),
+         ao_lag = lag(Winter_Spring_Arctic_Oscillation_Index_Model, n=5, order_by = YEAR),
+         ice_lag = lag(Winter_Sea_Ice_Advance_BS_Satellite, n=3, order_by = YEAR),
+         consump_lag = lag(Summer_Snow_Crab_Consumption_Pacific_cod_Model, n=3, order_by = YEAR),
+         bcs_lag = lag(Summer_Snow_Crab_Juvenile_Disease_Prevalence, n=3, order_by = YEAR), 
+         invert_lag = lag(Summer_Benthic_Invertebrate_Density_SEBS_Survey, n=1, order_by = YEAR),
+         tempocc = lag(Summer_Snow_Crab_Juvenile_Temperature_Occupancy, n=1, order_by = YEAR))%>%
+  select(-c(Summer_Cold_Pool_SEBS_Survey, Winter_Spring_Arctic_Oscillation_Index_Model, 
+         Winter_Sea_Ice_Advance_BS_Satellite, Summer_Snow_Crab_Consumption_Pacific_cod_Model,
+          Summer_Snow_Crab_Juvenile_Disease_Prevalence, Summer_Snow_Crab_Juvenile_Temperature_Occupancy,
+         Summer_Benthic_Invertebrate_Density_SEBS_Survey)) -> snow_indic_bas
+
+#Lets plot again and look at temporal coverage with lags incorporated 
+snow_indic_bas %>%
+  select(!c(imm_survey_abun, recruits_model_output)) %>%
+  pivot_longer(c(2:8), names_to="indicator", values_to="value") %>%
+  ggplot(aes(YEAR, indicator, size=value)) +
+  geom_point(na.rm=T) +
+  theme_bw()
+#with so many large ELH lags, we're going to lose early years in the timeseries 
+
+#And plot timeseries with lagged covariates 
+snow_indic_bas %>%
+  pivot_longer(c(2:10), names_to="indicator", values_to="value") %>%
+  ggplot(aes(YEAR, value)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~indicator, scales = "free_y") +
+  theme_bw()
+
+#Lets also look at distributions of potentially problematic covariates
+hist(snow_indic_bas$imm_survey_abun)
+hist(snow_indic_bas$recruits_model_output)
+hist(snow_indic_bas$invert_lag)
+hist(snow_indic_bas$bcs_lag)
+hist(snow_indic_bas$consump_lag)
 
 #Determine Covariates
 if(model=="BAS_Sep_2023") {
-  covars <- names(dat1)[-which(names(dat) %in% c("year", "imm_abund","model_recruit"))]
+  covars <- names(snow_indic_bas)[-which(names(snowindic) %in% c("YEAR", "imm_survey_abun","recruits_model_output"))]
 }
 n.cov <- length(covars)
 
 # Calculate Log Recruitment ===================================
-dat.2 <- dat1 %>% 
-  mutate("ln_rec"=log(imm_abund))
+snow_indic_bas <- snow_indic_bas %>% 
+  mutate("ln_rec"=log(imm_survey_abun),
+         "ln_model"=log(recruits_model_output))
 
-# Log transform biomass predictors ============================
-hist(log(dat.2$consump_lag))
-hist(log(dat.2$bcs_imm))
+# Log transform skewed predictors ============================
+hist(log(snow_indic_bas$consump_lag))
+hist(log(snow_indic_bas$bcs_lag))
 
 if(model=="BAS_Sep_2023") {
-  dat.2$consump_lag <- log(dat.2$consump_lag)
-  dat.2$bcs_imm <- log(dat.2$bcs_imm)
+  snow_indic_bas$consump_lag <- log(snow_indic_bas$consump_lag)
+  snow_indic_bas$bcs_lag <- log(snow_indic_bas$bcs_lag)
 }
-
-# Limit Years =================================================
-dat.3 <- dat.2 %>% 
-  filter(year %in% years)
 
 # Standardize Covariates ======================================
 # Plot Covariates
-covar.list <- dat.3 %>% 
-  dplyr::select(-c("imm_abund","model_recruit","ln_rec")) %>% 
-  gather(key=type, value=value, -year) 
+covar.list <- snow_indic_bas %>% 
+  dplyr::select(-c("imm_survey_abun","recruits_model_output","ln_rec", "ln_model")) %>% 
+  gather(key=type, value=value, -YEAR) 
 head(covar.list)
 
 explore.hist <- ggplot(covar.list, aes(x=value, fill=type)) +
@@ -147,7 +191,7 @@ ggsave(file.path(dir.figs,"Covar Histogram.png"), plot=explore.hist,
        height=8, width=12, units='in')
 
 # Z-score Predictors that are bounded at zero =======================================
-dat.4 <- dat.3
+dat.4 <- snow_indic_bas
 c <- 1
 for(c in 1:n.cov) {
   dat.4[[covars[c]]] <- (dat.4[[covars[c]]] - mean(dat.4[[covars[c]]], na.rm=TRUE)) / sd(dat.4[[covars[c]]], na.rm=TRUE)
@@ -159,16 +203,16 @@ apply(dat.4, 2, sd, na.rm=TRUE)
 # }
 
 # Subset Data for Fitting =====================================
+  
 if(model=="BAS_Sep_2023") {
-  dat.fit <- dat.4 %>% dplyr::select(-c("imm_abund", "model_recruit"))
-  dat.fit.list <- dat.fit %>% gather(key='var', value='value', -year)
-}  
-
+  dat.fit <- dat.4 %>% dplyr::select(-c("imm_survey_abun", "recruits_model_output", "ln_model"))
+  dat.fit.list <- dat.fit %>% gather(key='var', value='value', -YEAR)
+}
 
 #Plot Timeseries
 if(do.initPlot==TRUE) {
   g <- dat.fit.list %>% filter(var!="ln_rec") %>% 
-    ggplot(aes(x=year, y=var, fill=value)) +
+    ggplot(aes(x=YEAR, y=var, fill=value)) +
     theme_linedraw() +
     # geom_point()
     geom_point(aes(cex=value), alpha=0.5, pch=21, color='black') +
@@ -179,7 +223,7 @@ if(do.initPlot==TRUE) {
   
   # Correlation Plot
   covar.mtx <- dat.fit %>% 
-    dplyr::select(-c("year"))
+    dplyr::select(-c("YEAR"))
   
   corr.mtx <- cor(covar.mtx, use="na.or.complete")
   png(file.path(dir.figs, "Covariate Correlation.png"), height=12, width=12, 
@@ -188,16 +232,16 @@ if(do.initPlot==TRUE) {
   dev.off()
 }
 
-#Fairly high correlations b/w cod consumption, sea ice, cp extent and temperature of occupancy
-  #Because all 3 environmental indicators are likely capturing a similar mechanism, let's drop
-  #sea ice and temperature occupancy from the model run 
-
+#No correlations > 0.6, we'll keep them all for BAS
 
 #Fit Models ====================================
 
-# Remove Year and highly correlated covariates
+# Remove Year, rename variables 
 dat.temp <- dat.fit %>% 
-  dplyr::select(-c("year", "ice_lag", "temp_occ_imm"))
+  dplyr::select(-"YEAR") %>%
+  rename(`Cold pool`="cp_lag", `Arctic Oscillation`="ao_lag", `Sea Ice Extent`=ice_lag,
+         `Pcod Consumption`="consump_lag", `Disease Prevalance`="bcs_lag", `Benthic Prey`="invert_lag",
+         `Occupied Temperature`="tempocc")
 
 #Trial LM
 temp.lm <- lm(ln_rec ~ ., data=dat.temp)
@@ -234,13 +278,13 @@ mtext(paste("Snow Crab", model), side=3, outer=TRUE, font=2)
 abline(a=0, b=1, col=rgb(0,0,1,alpha=0.5), lwd=3)
 
 # Timeseries
-plot(x=dat.temp.na.omit$year, y=dat.temp.na.omit$ln_rec,
+plot(x=dat.temp.na.omit$YEAR, y=dat.temp.na.omit$ln_rec,
      xlab="Year", ylab="ln(Recruitment)", type='l', col=rgb(1,0,0,alpha=0.5),
      main="")
 grid(lty=3, col='dark gray')
-points(x=dat.temp.na.omit$year, y=dat.temp.na.omit$ln_rec,
+points(x=dat.temp.na.omit$YEAR, y=dat.temp.na.omit$ln_rec,
        pch=21, bg=rgb(1,0,0,alpha=0.5))
-lines(x=dat.temp.na.omit$year, y=pred.bas$Ybma, lwd=3, col=rgb(0,0,1, alpha=0.5))
+lines(x=dat.temp.na.omit$YEAR, y=pred.bas$Ybma, lwd=3, col=rgb(0,0,1, alpha=0.5))
 
 legend('bottom', legend=c("Observed","Predicted"), lty=1, col=c(rgb(1,0,0,alpha=0.5),
                                                                   rgb(0,0,1, alpha=0.5)),
@@ -453,64 +497,113 @@ plot(gbm.fit, i.var=3)
   #There's a lot wonky with this model, so I wouldn't put too much stock in it. 
   #You could probably knock off the last two years of recruits and be good. 
 
-#Assign Lags for indicators 
-dat %>%
-  filter(year>1988) %>%
-  mutate(cp_lag = lag(cp_extent, n=2),
-         ao_lag = lag(Mean_AO, n=5),
-         ice_lag = lag(JanFeb_ice, n=2),
-         consump_lag = lag(Pcod_consumption, n=2)) %>%
-  select(-cp_extent, -Mean_AO, -JanFeb_ice, -Pcod_consumption) -> dat1
+#Need to reassign lags for model output given that model estimated recruits are much smaller 
+  #than survey derived recruits 
+
+#Assign Lags for indicators - see metadata file in repo for rationales for lags
+snowindic %>%
+  select(-c(AMJ_Chlorophylla_Biomass_SEBS_Satellite, Summer_Snow_Crab_Juvenile_Condition_SEBS_Survey,
+            Summer_Snow_Crab_Male_Center_Distribution_SEBS_Survey, Summer_Snow_Crab_Male_Area_Occupied_SEBS_Survey,
+            Annual_Snow_Crab_Male_Size_Maturity_Model)) %>%
+  filter(YEAR>=1988) %>%
+  mutate(cp_lag = lag(Summer_Cold_Pool_SEBS_Survey, n=2, order_by = YEAR),
+         ao_lag = lag(Winter_Spring_Arctic_Oscillation_Index_Model, n=3, order_by = YEAR),
+         ice_lag = lag(Winter_Sea_Ice_Advance_BS_Satellite, n=1, order_by = YEAR),
+         consump_lag = lag(Summer_Snow_Crab_Consumption_Pacific_cod_Model, n=1, order_by = YEAR),
+         bcs_lag = lag(Summer_Snow_Crab_Juvenile_Disease_Prevalence, n=1, order_by = YEAR), 
+         invert_lag = lag(Summer_Benthic_Invertebrate_Density_SEBS_Survey, n=1, order_by = YEAR),
+         tempocc = lag(Summer_Snow_Crab_Juvenile_Temperature_Occupancy, n=1, order_by = YEAR))%>%
+  select(-c(Summer_Cold_Pool_SEBS_Survey, Winter_Spring_Arctic_Oscillation_Index_Model, 
+            Winter_Sea_Ice_Advance_BS_Satellite, Summer_Snow_Crab_Consumption_Pacific_cod_Model,
+            Summer_Snow_Crab_Juvenile_Disease_Prevalence, Summer_Snow_Crab_Juvenile_Temperature_Occupancy,
+            Summer_Benthic_Invertebrate_Density_SEBS_Survey)) -> snow_indic_bas_model
+
+#plot timeseries with lagged covariates 
+snow_indic_bas_model %>%
+  pivot_longer(c(2:10), names_to="indicator", values_to="value") %>%
+  ggplot(aes(YEAR, value)) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~indicator, scales = "free_y") +
+  theme_bw()
 
 #Determine Covariates
 if(model=="BAS_Sep_2023") {
-  covars <- names(dat1)[-which(names(dat) %in% c("year", "imm_abund","model_recruit"))]
+  covars <- names(snow_indic_bas_model)[-which(names(snowindic) %in% c("YEAR", "imm_survey_abun","recruits_model_output"))]
 }
 n.cov <- length(covars)
 
-# Calculate Log Recruitment ===================================
-dat.2 <- dat1 %>% 
-  mutate("ln_rec_model"=log(model_recruit))
+# Log transform skewed predictors ============================
+hist(log(snow_indic_bas_model$consump_lag))
+hist(log(snow_indic_bas_model$bcs_lag))
 
-# Log transform biomass predictors ============================
-hist(log(dat.2$consump_lag))
-hist(log(dat.2$bcs_imm))
+snow_indic_bas_model <- snow_indic_bas_model %>% 
+  mutate("ln_rec"=log(imm_survey_abun),
+         "ln_model"=log(recruits_model_output))
 
 if(model=="BAS_Sep_2023") {
-  dat.2$consump_lag <- log(dat.2$consump_lag)
-  dat.2$bcs_imm <- log(dat.2$bcs_imm)
+  snow_indic_bas_model$consump_lag <- log(snow_indic_bas_model$consump_lag)
+  snow_indic_bas_model$bcs_lag <- log(snow_indic_bas_model$bcs_lag)
 }
 
 # Limit Years =================================================
-dat.3 <- dat.2 %>% 
-  filter(year %in% years)
+#dat.3 <- dat.2 %>% 
+#filter(year %in% years)
+
+# Standardize Covariates ======================================
+# Plot Covariates
+covar.list <- snow_indic_bas_model %>% 
+  dplyr::select(-c("imm_survey_abun","recruits_model_output","ln_rec", "ln_model")) %>% 
+  gather(key=type, value=value, -YEAR) 
+head(covar.list)
+
+explore.hist <- ggplot(covar.list, aes(x=value, fill=type)) +
+  theme_linedraw() +
+  geom_histogram() +
+  geom_density(alpha=0.2) +
+  scale_fill_viridis(discrete=TRUE) +
+  facet_wrap(~type, scales='free') +
+  theme(legend.position = "NA")
+
+ggsave(file.path(dir.figs,"Covar Histogram_model.png"), plot=explore.hist, 
+       height=8, width=12, units='in')
 
 # Z-score Predictors that are bounded at zero =======================================
-dat.4 <- dat.3
+dat.5 <- snow_indic_bas_model
 c <- 1
 for(c in 1:n.cov) {
-  dat.4[[covars[c]]] <- (dat.4[[covars[c]]] - mean(dat.4[[covars[c]]], na.rm=TRUE)) / sd(dat.4[[covars[c]]], na.rm=TRUE)
+  dat.5[[covars[c]]] <- (dat.5[[covars[c]]] - mean(dat.5[[covars[c]]], na.rm=TRUE)) / sd(dat.5[[covars[c]]], na.rm=TRUE)
 }
 
 # Checkup - make sure all predictors are correctly z-scored
-apply(dat.4, 2, mean, na.rm=TRUE)
-apply(dat.4, 2, sd, na.rm=TRUE)
+apply(dat.5, 2, mean, na.rm=TRUE)
+apply(dat.5, 2, sd, na.rm=TRUE)
 # }
 
 # Subset Data for Fitting =====================================
-if(model=="BAS_Sep_2023") {
-  dat.fit <- dat.4 %>% dplyr::select(-c("imm_abund", "model_recruit"))
-  dat.fit.list <- dat.fit %>% gather(key='var', value='value', -year)
-}  
 
-#Fairly high correlations b/w cod consumption, sea ice, cp extent and temperature of occupancy
-#Because all 3 environmental indicators are likely capturing a similar mechanism, let's drop
-#sea ice and temp occupancy from the model run
+if(model=="BAS_Sep_2023") {
+  dat.fit.model <- dat.5 %>% dplyr::select(-c("imm_survey_abun", "recruits_model_output", "ln_rec"))
+  dat.fit.list <- dat.fit.model %>% gather(key='var', value='value', -YEAR)
+}
+
+# Correlation Plot
+covar.mtx <- dat.fit.model %>% 
+  dplyr::select(-c("YEAR"))
+
+corr.mtx <- cor(covar.mtx, use="na.or.complete")
+png(file.path(dir.figs, "Covariate Correlation_model.png"), height=12, width=12, 
+    units='in', res=300)
+corrplot::corrplot(corr.mtx, method="number")
+dev.off()
+
+#Interesting- we've got much higher correlations with this dataset. Run not continued in 2023
+  #due to time constraints 
 
 
 #Fit Models ====================================
 
-# Remove Year and highly correlated covariates
+# Remove Year 
 dat.temp <- dat.fit %>% 
   dplyr::select(-c("year", "ice_lag", "temp_occ_imm"))
 

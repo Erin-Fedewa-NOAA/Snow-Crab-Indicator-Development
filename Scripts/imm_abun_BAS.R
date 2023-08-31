@@ -62,4 +62,4 @@ ggplot(abundance, aes(y=ABUNDANCE_MIL, x=YEAR)) +
   geom_line()
 
 #Write csv as output (abundance in millions of crab)
-write.csv(abundance, file = ("./Output/BAS_response.csv"))
+write.csv(abundance, file = ("./Output/BAS_response.csv"), row.names=FALSE)
