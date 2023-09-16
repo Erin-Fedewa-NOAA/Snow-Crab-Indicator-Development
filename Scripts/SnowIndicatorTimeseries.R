@@ -59,7 +59,7 @@ eco_ind %>%
 #Ecosystem Plots 
 
 #Reading in new data with cod consumption and SAM added manually from contributor csv's 
-eco_ind <- read.csv("./Data/snow_eco_indicators.csv")
+eco_ind <- read.csv("./Data/snow_2023_indicators.csv")
 
 eco_ind %>%
   ## Male SAM 
@@ -81,21 +81,23 @@ eco_ind %>%
 
 eco_ind %>%
   ##Pcod_consumption
-  select(year, cod_consumption) %>%
-  ggplot(aes(x = year, y = cod_consumption))+
+  select(YEAR, DATA_VALUE, PRODUCT) %>%
+  filter(PRODUCT == "Summer_Snow_Crab_Consumption_Pacific_cod_Model") %>%
+  ggplot(aes(x = YEAR, y = DATA_VALUE))+
   geom_point(size=3)+
   geom_line() +
   #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(cod_consumption, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(cod_consumption, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(cod_consumption, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  geom_hline(aes(yintercept = mean(DATA_VALUE, na.rm=TRUE)), linetype = 5)+
+  geom_hline(aes(yintercept = quantile(DATA_VALUE, .10, na.rm=TRUE)), linetype = 3)+
+  geom_hline(aes(yintercept = quantile(DATA_VALUE, .90, na.rm=TRUE)), linetype = 3)+
+  annotate("rect", xmin=2022.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = "Consumption (mt/day)", x = "")+
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  scale_x_continuous(breaks = seq(1980, 2023, 5)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
   ggtitle("Daily Consumption of Snow Crab by Pacific Cod")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> pcod
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
+  theme(axis.text=element_text(size=12)) -> pcod
 
 eco_ind %>%
   ## Invert Density
@@ -153,20 +155,22 @@ eco_ind %>%
 
 eco_ind %>%
   ## Immature Temperature of Occupancy   
-  select(year, temp_occ_imm) %>%
-  ggplot(aes(x = year, y = temp_occ_imm))+
+  select(YEAR, DATA_VALUE, PRODUCT) %>%
+  filter(PRODUCT == "Summer_Snow_Crab_Juvenile_Temperature_Occupancy") %>%
+  ggplot(aes(x = YEAR, y = DATA_VALUE))+
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(temp_occ_imm, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(temp_occ_imm, .90, na.rm=TRUE)), linetype = 3)+
+  geom_hline(aes(yintercept = mean(DATA_VALUE, na.rm=TRUE)), linetype = 5)+
+  geom_hline(aes(yintercept = quantile(DATA_VALUE, .10, na.rm=TRUE)), linetype = 3)+
+  geom_hline(aes(yintercept = quantile(DATA_VALUE, .90, na.rm=TRUE)), linetype = 3)+
   annotate("rect", xmin=2022.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = expression("Temperature of occupancy ("*~degree*C*")"), x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  labs(y = expression("Temperature of Cccupancy ("*~degree*C*")"), x = "") +
+  scale_x_continuous(breaks = seq(1980, 2023, 5)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("Immature Female Snow Crab Temperature of Occupancy")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> occtemp
+  ggtitle("Immature Snow Crab Temperature of Occupancy")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
+  theme(axis.text=element_text(size=12))  -> occtemp
 
 eco_ind %>%
   ## Arctic Oscillation
