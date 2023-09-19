@@ -4,10 +4,10 @@
 
 # last updated: 2023/8/20
 
-#Follow up for 2024: 
+#Follow ups for 2024: 
   #how to address handful of missing stations? -currently using only stations sampled every yr
   #Use size at 50% maturity as male maturity cutline for each year 
-  #Plot these trends alongside abundance 
+  #Plot these trends alongside abundance - is there a better metric than d95? 
 
 # load ----
 library(tidyverse)

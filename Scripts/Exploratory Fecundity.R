@@ -3,6 +3,11 @@
 library(tidyverse)
 library(ggridges)
 
+#2024 to do's:
+  #Write script for male and female size at maturity (re-create Jon's analysis)
+  #Revise female "proportion full" metric as 2024 indicator addition
+  #Calculate sex ratio as possible new indicator inclusion 
+
 ##############################################
 
 ## EBS haul data ----

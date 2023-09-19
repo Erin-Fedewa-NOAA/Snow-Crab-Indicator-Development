@@ -3,7 +3,7 @@
     #Spatial coverage is by BSIERP regions in EBS/NBS and by crab mgmt area 
 
 #FOLLOW UP NOTE: This script was used to spatiotemporally subset satellite products for the 
-# draft 2022 snow crab ESP. As of fall 2022, look up tables for crab managment areas are being 
+# draft 2022 snow crab ESP. As of fall 2022, look up tables for crab management areas are being 
 #used to pull data direct online and spatially subset for indicator submission- no 
 #further post-processing needed.
 

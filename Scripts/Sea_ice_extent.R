@@ -12,6 +12,8 @@
   #Final dataset used in 2023 snow crab report card is NOAA@NSIDC data (https://nsidc.org/data/g02135/versions/3#anchor-1)
   #Get data -> seaice_analysis -> Sea_Ice_Index_Regional_Monthly (pulled Bering Sea data tab)
 
+#Additional follow up- ask Phyllis which months make the most sense for report ice extent
+
 # load ----
 library(tidyverse)
 library(tidync)

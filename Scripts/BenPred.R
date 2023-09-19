@@ -1,13 +1,10 @@
 # notes ----
 #Summarize benthic predator and pcod mean CPUE across years in snow crab core habitat
-#NOTE: sc_area_50perc.csv spatial look-up table was developed in BenthicInvert.R
+#NOTE: Benthic predator biomass is NOT a current snow crab indicator 
+  #Also- sc_area_50perc.csv spatial look-up table was developed in BenthicInvert.R
 
 # Erin Fedewa
-# last updated: 2022/9/24
-
-#Updates for 2024:
-  #Use 50% SAM as cutline for male maturity in EBS
-  #How to account for 2018 and 2023 different grids for NBS prevalence? 
+# last updated: 2023/9/24
 
 # load ----
 library(tidyverse)
@@ -45,9 +42,10 @@ ebs17 <- import("./Data/Groundfish Catch Data/ebs2017_2018.csv")
 ebs19 <- import("./Data/Groundfish Catch Data/ebs2019.csv")
 ebs21 <- import("./Data/Groundfish Catch Data/ebs2021.csv")
 ebs22 <- import("./Data/Groundfish Catch Data/ebs2022.csv")
+ebs23 <- import("./Data/Groundfish Catch Data/ebs2023.csv")
 
 # combine datasets and save output
-bind_rows(ebs82, ebs85, ebs90, ebs95, ebs00, ebs05, ebs09, ebs13, ebs17, ebs19, ebs21, ebs22) %>%
+bind_rows(ebs82, ebs85, ebs90, ebs95, ebs00, ebs05, ebs09, ebs13, ebs17, ebs19, ebs21, ebs22, ebs23) %>%
   write_csv("./Output/pred_timeseries.csv")
 pred <- read_csv("./Output/pred_timeseries.csv")
 
@@ -62,7 +60,8 @@ pred %>%
 
 #Calculate mean CPUE for each guild across years 
 pred %>%
-  filter(STATION %in% core) %>%
+  filter(STATION %in% core, 
+         YEAR >= 1988) %>%
   mutate(thoustons = ((WTCPUE*100*1371.9616)/1000000)) %>% #Convert WTCPUE in kg/HA to thoustons/km^2
   group_by(YEAR, STATION) %>%
   summarise(Sab_Hal_cpue = sum(thoustons[SID %in% c(20510, 10120)], na.rm = T),
@@ -93,7 +92,6 @@ SCpred_timeseries %>%
   geom_point(aes(colour = pred_guild)) +
   geom_line(aes(colour = pred_guild)) +
   labs(y = "Benthic Predator CPUE (1000t/km2)", x = "") +
-  xlim(1980, 2022) +
   theme_bw() +
   theme(legend.title=element_blank())
 

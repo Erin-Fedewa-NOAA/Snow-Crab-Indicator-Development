@@ -16,7 +16,8 @@
   #These two datasets are then merged with the indicator timeseries for the BAS analysis 
 
 #Follow ups for 2023: Re-assess lags/mechanisms, run with model output, use Krista Oke's 
-  #additional tests: DFA's, GAM's, boosted regression trees 
+  #additional tests: DFA's, GAM's, boosted regression trees, test female only models, 
+  #clean up BAS script and figures 
 #==================================================================================================
 #TIMING:
 #Initial run May 2022, model run by Curry

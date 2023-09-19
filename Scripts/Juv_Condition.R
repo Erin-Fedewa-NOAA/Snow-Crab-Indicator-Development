@@ -4,7 +4,8 @@
 # Erin Fedewa
 # last updated: 2023/8/24
 
-#UPDATES for 2024: replace master csv file- 2023 data DWT data added last minute
+#UPDATES for 2024: replace master csv file- 2023 data DWT data added last minute and needs 
+  #to be cleaned up 
 
 # load ----
 library(tidyverse)

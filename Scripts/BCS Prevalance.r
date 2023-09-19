@@ -8,8 +8,8 @@
 library(tidyverse)
 library(ggridges)
 
-#Note: Error in script corrected 3/23, any 2022 ESP BCS prevalence estimates 
-  #will not be comparable to new estimates for 2023 report card 
+#2024 updates: redefine maturity using 50% SAM data
+  #Add in script for NBS disease prevelance- How to account for 2018 and 2023 different grids? 
 
 ##############################################
 
@@ -235,53 +235,7 @@ ggsave("bcs.png")
 ##############################################
 #Northern Bering Sea 
 
-#compute cpue by disease code 2 for entire population
-crab_nbs %>% 
-  filter(HAUL_TYPE == 3,
-         SEX %in% c(1,2)) %>% 
-  mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}")),
-         bcs = ifelse(DISEASE_CODE != 2 | is.na(DISEASE_CODE), F, T)) %>%
-  group_by(YEAR, GIS_STATION, AREA_SWEPT, bcs) %>%
-  summarise(ncrab = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-  ungroup %>%
-  # compute cpue per nmi2
-  mutate(cpue = ncrab / AREA_SWEPT) -> cpue_pop
-#add zero catch stations to bcs=T/F datasets
-cpue_pop %>% 
-  filter(bcs == FALSE) %>%
-  right_join(crab_nbs %>% 
-               mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-               filter(HAUL_TYPE ==3) %>%
-               distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
-  replace_na(list(cpue = 0)) %>%
-  replace_na(list(ncrab = 0)) %>%
-  replace_na(list(bcs = FALSE)) %>%
-  rbind(cpue_pop %>% 
-          filter(bcs == TRUE) %>%
-          right_join(crab_nbs %>% 
-                       mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-                       filter(HAUL_TYPE ==3) %>%
-                       distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
-          replace_na(list(cpue = 0)) %>%
-          replace_na(list(ncrab = 0)) %>%
-          replace_na(list(bcs = TRUE))) -> catch_pop
 
-#BCS prevalence of entire population
-catch_pop %>%
-  right_join(strata_nbs %>%
-               rename(YEAR=SURVEY_YEAR)) %>%
-  group_by(YEAR, STRATUM, bcs) %>%
-  summarise(total_area = mean(TOTAL_AREA),
-            mean_cpue = mean(cpue),
-            abundance_mil = mean(total_area) * mean_cpue / 1000000) %>%
-  group_by(YEAR, bcs) %>%
-  #sum across strata
-  summarise(Total_abun=sum(abundance_mil)) %>% 
-  filter(!is.na(bcs)) %>%
-  #calculate prevalence 
-  group_by(YEAR) %>%
-  summarise(Perc_Prevalance = (Total_abun[bcs==TRUE]/((Total_abun[bcs==FALSE])+(Total_abun[bcs==TRUE])))*100) %>%
-  mutate(Maturity = rep("Population")) -> popprev
 
 
    

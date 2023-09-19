@@ -3,8 +3,13 @@
 #Summarize benthic invert mean CPUE across years in core area  
 
 # Erin Fedewa
-# last updated: 2022/9/22
+# last updated: 2023/9/22
 
+#Follow ups for 2024:
+  #1) revise script (i.e. data fields/names) to accommodate pulling GAP 
+  #survey data directly from oracle 
+  #2) Organize these into broader benthic guilds? 
+  
 # load ----
 library(tidyverse)
 library(mgcv)
@@ -47,7 +52,7 @@ cpue %>%
   group_by(GIS_STATION) %>%
   summarise(AVG_CPUE = mean(CPUE)) %>%
   filter(AVG_CPUE > quantile(AVG_CPUE, 0.50)) -> perc50 #187 stations
-#Lets go with the 50th percentile for defining core immature area 
+#Lets go with the 50th percentile for defining core area 
 
 #Join lat/long back in to perc50 dataset and plot
 sc_strata %>%
@@ -82,9 +87,10 @@ ebs17 <- import("./Data/Groundfish Catch Data/ebs2017_2018.csv")
 ebs19 <- import("./Data/Groundfish Catch Data/ebs2019.csv")
 ebs21 <- import("./Data/Groundfish Catch Data/ebs2021.csv")
 ebs22 <- import("./Data/Groundfish Catch Data/ebs2022.csv")
+ebs23 <- import("./Data/Groundfish Catch Data/ebs2023.csv")
 
 # combine datasets and save output
-bind_rows(ebs82, ebs85, ebs90, ebs95, ebs00, ebs05, ebs09, ebs13, ebs17, ebs19, ebs21, ebs22) %>%
+bind_rows(ebs82, ebs85, ebs90, ebs95, ebs00, ebs05, ebs09, ebs13, ebs17, ebs19, ebs21, ebs22, ebs23) %>%
   write_csv("./Output/benthic_timeseries.csv")
 benthic <- read_csv("./Output/benthic_timeseries.csv")
 
@@ -104,6 +110,7 @@ benthic %>%
 #Calculate mean CPUE for each guild across years 
 benthic %>%
   filter(STATION %in% core, 
+         YEAR >= 1988,
          !(SID %in% c(68560, 68580, 69322, 69323))) %>% #remove commercial crab species 
   mutate(thoustons = ((WTCPUE*100*1371.9616)/1000000)) %>% #Convert WTCPUE in kg/HA to thoustons/km^2
   group_by(YEAR, STATION) %>%
@@ -163,7 +170,5 @@ SCbenthic_timeseries %>%
   labs(y = "Total Benthic Invert CPUE (1000t/km2)", x = "") +
   theme_bw()+
   theme(panel.grid = element_blank()) 
-
-#Large shift in late 1980's- coincides with SMBKC/BBRKC benthic index and regime shift
 
 

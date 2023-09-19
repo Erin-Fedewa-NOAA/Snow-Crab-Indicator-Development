@@ -5,6 +5,7 @@
 
 #To update for 2024: Use upper size threshold as size at 50% maturity? Or does this make it too difficult to
   #assign lags with potentially multiple cohorts/year classes?
+#Develop a female response variable too for additional model runs?
 
 # Erin Fedewa
 # last updated: 2023/8/27
