@@ -1,5 +1,7 @@
 # Snow-Crab-Indicator-Development
-This repository contains script and output for the development of ecosystem indicators for the 2022 Bering Sea snow crab Ecosystem and Socioeconomic Profile (ESP). The full ESP can be found here: https://meetings.npfmc.org/CommentReview/DownloadFile?p=fb2b5efa-a902-4945-bc56-a9bd31efdb14.pdf&fileName=EBS%20Snow%20Crab%20ESP%202022.pdf
+This repository contains script and output for the development of ecosystem indicators for the 2022 Bering Sea snow crab Ecosystem and Socioeconomic Profile (ESP) and the 2023 ESP report card update. The full ESP can be found here: https://meetings.npfmc.org/CommentReview/DownloadFile?p=fb2b5efa-a902-4945-bc56-a9bd31efdb14.pdf&fileName=EBS%20Snow%20Crab%20ESP%202022.pdf
+
+The most recent 2023 ESP report card is a full appendix in the Bering Sea snow crab stock assessment here: [https://meetings.npfmc.org/CommentReview/DownloadFile?p=91463040-bc4f-49ff-82e6-33618e0faeee.pdf&fileName=C1%20BBRKC%20SAFE.pdf](https://meetings.npfmc.org/CommentReview/DownloadFile?p=62f8b7ae-5eb7-49fd-a2bc-051434c8bc19.pdf&fileName=C1%20EBS%20Snow%20Crab%20SAFE.pdf)
 
 # Methodology 
 The ecosystem and socioeconomic profile or ESP is a standardized framework for compiling and evaluating relevant stock-specific ecosystem and socioeconomic indicators and communicating linkages and potential drivers of the stock within the stock assessment process. The ESP process creates a traceable pathway from the initial development of indicators to management advice and serves as an on-ramp for developing ecosystem-linked stock assessments. 
