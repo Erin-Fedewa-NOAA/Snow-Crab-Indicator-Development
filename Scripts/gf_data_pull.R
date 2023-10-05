@@ -3,7 +3,6 @@
 
 
 # This has a specific username and password because I DONT want people to have access to this!
-#Move this to a seperate script within main ESP folder 
 source("Z:/Projects/ConnectToOracle.R")
 channel <- channel_products
 
@@ -58,7 +57,8 @@ LEFT JOIN GAP_PRODUCTS.AKFIN_CPUE cp
 ON hh.HAULJOIN = cp.HAULJOIN
 LEFT JOIN GAP_PRODUCTS.TAXONOMIC_CLASSIFICATION tt
 ON cp.SPECIES_CODE = tt.SPECIES_CODE
-WHERE SURVEY_DEFINITION_ID IN (143, 98) ;")) #  143 NBS, 98 EBS
+WHERE SURVEY_DEFINITION_ID IN (143, 98) -- 143 NBS, 98 EBS
+AND tt.SURVEY_SPECIES = 1;")) 
 
 write.csv(x = a, 
           here::here("data","indicator_cpue_timeseries.csv"))
@@ -137,7 +137,7 @@ hh.CRUISEJOIN,
 hh.CRUISE,
 hh.YEAR,
 hh.SURVEY_DEFINITION_ID,
-hh.SURVEY_NAME,
+hh.SURVEY,
 hh.VESSEL_ID,
 hh.VESSEL_NAME,
 hh.HAULJOIN,
@@ -154,7 +154,7 @@ hh.STATION
 FROM GAP_PRODUCTS.FOSS_HAUL hh
 LEFT JOIN GAP_PRODUCTS.FOSS_CATCH cc
 ON hh.HAULJOIN = cc.HAULJOIN
-WHERE SURVEY_DEFINITION_ID IN (143, 98);")) #  143 NBS, 98 EBS
+WHERE SURVEY_DEFINITION_ID IN (143, 98);")) ## 143 NBS, 98 EBS 
 
 write.csv(x = a, 
           here::here("data","indicator_cpue_timeseries.csv"))
