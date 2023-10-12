@@ -2,6 +2,9 @@
 #Determine stations that compose average snow crab core habitat across the EBS timeseries
 #Summarize benthic invert mean CPUE across years in core area  
 
+#FIX THIS SCRIPT TO use "./Data/gf_cpue_timeseries.csv" data product instead!
+  #Also repeat the same for BBRKC ESP script 
+
 # Erin Fedewa
 # last updated: 2023/9/22
 
