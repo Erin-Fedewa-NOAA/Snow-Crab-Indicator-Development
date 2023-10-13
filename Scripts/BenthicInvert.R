@@ -4,6 +4,8 @@
 
 #FIX THIS SCRIPT TO use "./Data/gf_cpue_timeseries.csv" data product instead!
   #Also repeat the same for BBRKC ESP script 
+#ALSO- gf_cpue_timeseries.csv contains NBS data, so need to specify either spatial area
+  #or EBS only! 
 
 # Erin Fedewa
 # last updated: 2023/9/22
