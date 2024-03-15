@@ -5,25 +5,9 @@
   #gf_cpue_timeseries.csv and save in data folder (Em copy is there currently)
 
 
-# This has a specific username and password because I DONT want people to have access to this!
-source("Z:/Projects/ConnectToOracle.R")
+# Connect to Oracle
+source("Z:/R/ConnectToOracle.R")
 channel <- channel_products
-
-# I set up a ConnectToOracle.R that looks like this: 
-#   
-#   PKG <- c("RODBC")
-# for (p in PKG) {
-#   if(!require(p,character.only = TRUE)) {  
-#     install.packages(p)
-#     require(p,character.only = TRUE)}
-# }
-# 
-# channel<-odbcConnect(dsn = "AFSC",
-#                      uid = "USERNAME", # change
-#                      pwd = "PASSWORD", #change
-#                      believeNRows = FALSE)
-# 
-# odbcGetInfo(channel)
 
 
 # Manipulate with SQL using AKFIN data before bringing into R ------------------
@@ -64,7 +48,7 @@ WHERE SURVEY_DEFINITION_ID IN (143, 98) -- 143 NBS, 98 EBS
 AND tt.SURVEY_SPECIES = 1;")) 
 
 write.csv(x = a, 
-          here::here("data","indicator_cpue_timeseries.csv"))
+          here::here("data","gf_cpue_timeseries.csv"))
 
 # Alternatively, you an just download the files and manipulate locally ---------
 
@@ -127,7 +111,7 @@ dat <- dplyr::left_join(GAP_PRODUCTS_AKFIN_HAUL,
                 NUMCPUE = CPUE_NOKM2/100)
 
 write.csv(x = dat, 
-          here::here("data","indicator_cpue_timeseries.csv"))
+          here::here("data","gf_cpue_timeseries.csv"))
 
 # Manipulate with SQL using FOSS data before bringing into R -------------------
 
@@ -160,4 +144,6 @@ ON hh.HAULJOIN = cc.HAULJOIN
 WHERE SURVEY_DEFINITION_ID IN (143, 98);")) ## 143 NBS, 98 EBS 
 
 write.csv(x = a, 
-          here::here("data","indicator_cpue_timeseries.csv"))
+          here::here("data","gf_cpue_timeseries.csv"))
+
+
