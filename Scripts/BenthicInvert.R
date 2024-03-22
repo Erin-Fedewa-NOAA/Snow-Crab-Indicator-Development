@@ -78,6 +78,12 @@ benthic %>%
   print(n=50)
 #A few missing stations in some years- 
 
+#Number of stations with catch data across entire survey grid 
+benthic %>%
+  group_by(YEAR) %>%
+  summarise(station = length(unique(STATION))) %>%
+  print(n=50)
+
 #Calculate mean CPUE for each guild across years 
 benthic %>%
   filter(STATION %in% core, 
