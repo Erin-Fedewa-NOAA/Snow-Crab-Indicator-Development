@@ -120,10 +120,13 @@ benthic %>%
             Ascidians = mean(Ascidians_cpue),
             Total_Benthic = mean(Total_Benthic_cpue))-> SCbenthic_timeseries
 
-write.csv(SCbenthic_timeseries, file = "./Output/SCbenthic_timeseries.csv")
+write_csv(SCbenthic_timeseries, file = "./Output/SCbenthic_timeseries.csv")
+
+#Load output
+benthic_cpue <- read_csv("./Output/SCbenthic_timeseries.csv")
 
 #Plots 
-SCbenthic_timeseries %>%
+benthic_cpue %>%
   pivot_longer(c(2:17), names_to = "benthic_guild", values_to = "CPUE_KGKM2") %>%
   ggplot(aes(x = YEAR, y = CPUE_KGKM2, group = factor(benthic_guild)))+
   geom_point(aes(colour = benthic_guild)) +
@@ -140,5 +143,4 @@ SCbenthic_timeseries %>%
   labs(y = "Total Benthic Invert CPUE (1000t/km2)", x = "") +
   theme_bw()+
   theme(panel.grid = element_blank()) 
-
 
