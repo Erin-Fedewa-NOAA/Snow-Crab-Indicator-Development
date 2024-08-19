@@ -82,6 +82,7 @@ d95 %>%
   ggplot(aes(x = YEAR, y = d95, group= size_sex, color = size_sex))+
   geom_point(size=3)+
   geom_line() +
+  geom_hline(aes(yintercept = mean(d95, na.rm=TRUE)), linetype = 5) +
   theme_bw()
 
 #Write output for D95 indicator     

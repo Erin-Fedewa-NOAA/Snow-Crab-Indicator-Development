@@ -3,10 +3,9 @@
 #Arctic Oscillation is pulled from NOAA-NWS via:
 #https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/ao.shtml
 
-#TO DO: Use Mike MICE script to use imputed temperature timeseries for cold pool 
+#TO DO: Date correct and impute missing temperatures 
 
 # Erin Fedewa
-# last updated: 2023/8/18
 
 # load ----
 library(tidyverse)
@@ -28,14 +27,14 @@ temp %>%
   group_by(YEAR) %>%
   summarise(station = length(unique(GIS_STATION))) %>%
   print(n=50)
-#Missing stations in early years-lets pull pre-1980, though still lots
-  #of missing data that will bias early years 
+#Missing stations in early years-lets pull 1988+, though still 
+  #missing data that should be interpolated/imputed 
 
 # compute mean summer bottom temperature
 temp %>%
   mutate(YEAR = str_extract(CRUISE, "\\d{4}")) %>%
-  filter(YEAR >= 1980,
-         HAUL_TYPE != 17) %>%
+  filter(YEAR >= 1988,
+         HAUL_TYPE ==3) %>%
   distinct(YEAR, GIS_STATION, GEAR_TEMPERATURE) %>%
   group_by(YEAR) %>%
   summarise(summer_bt = mean(GEAR_TEMPERATURE, na.rm = T))-> avg_bt
@@ -46,14 +45,13 @@ avg_bt %>%
   geom_point() +
   geom_line()+
   labs(y = "Bottom temperature (C)", x = "") +
-  xlim(1980, 2023) +
   theme_bw()
 
 #compute cold pool areal extent
 temp %>%
   mutate(YEAR = str_extract(CRUISE, "\\d{4}")) %>%
-  filter(YEAR >= 1980,
-         HAUL_TYPE != 17,
+  filter(YEAR >= 1988,
+         HAUL_TYPE == 3,
          !(GIS_STATION %in% corner)) %>%
   distinct(YEAR, GIS_STATION, GEAR_TEMPERATURE) %>%
   group_by(YEAR) %>%
@@ -65,7 +63,7 @@ cpa %>%
   geom_point() +
   geom_line()+
   labs(y = "Cold Pool Extent (nmi2)", x = "") +
-  xlim(1980, 2023) +
+  geom_hline(aes(yintercept = mean(cpa, na.rm=TRUE)), linetype = 5) +
   theme_bw()
 
 ###########################################
@@ -88,14 +86,15 @@ mean_AO %>%
   geom_point() +
   geom_line()+
   labs(y = "Arctic Oscillation Index", x = "") +
-  xlim(1978, 2023) +
+  geom_hline(aes(yintercept = mean(Mean_AO, na.rm=TRUE)), linetype = 5) +
   theme_bw()
 
 # combine indices and save output
 avg_bt %>%
   full_join(cpa) %>%
   full_join(mean_AO %>%
-              mutate(YEAR = as.character(YEAR))) ->env
+              mutate(YEAR = as.character(YEAR))) %>%
+  arrange(YEAR) ->env
 write_csv(env, "./Output/environmental_timeseries.csv")
 
 

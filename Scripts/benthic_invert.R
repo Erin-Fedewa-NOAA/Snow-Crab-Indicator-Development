@@ -3,11 +3,12 @@
 #Summarize benthic invert mean CPUE across years in core area  
 
 # Erin Fedewa
-# last updated: 2024/3/20
 
 # load ----
 library(tidyverse)
 library(mgcv)
+library(rnaturalearth)
+library(rnaturalearthdata)
 
 ## EBS haul data 
 sc_catch <- read.csv("./Data/crabhaul_opilio.csv")
@@ -28,6 +29,14 @@ sc_catch %>%
   print(n=60)
 #Lets determine core area from standardized timeseries (post-1987)
 
+#Exclude corner stations since they were dropped in 2024
+corner <- list("QP2625","ON2625","HG2019","JI2120","IH1918",
+               "GF2221","HG1918","GF2019","ON2524","PO2726",
+               "IH2221","GF1918","JI2221","JI2019","JI1918",
+               "HG2221","QP2726","PO2423","IH2019","PO2625",
+               "QP2423","IH2120","PO2524","HG2120","GF2120",
+               "QP2524")
+
 #Calculate CPUE by station for all snow crab 
 sc_catch %>%
   mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
@@ -47,9 +56,10 @@ sc_catch %>%
 
 #stations in 50-100 CPUE percentile range
 cpue %>%
+  filter(!(GIS_STATION %in% corner)) %>%
   group_by(GIS_STATION) %>%
   summarise(AVG_CPUE = mean(CPUE)) %>%
-  filter(AVG_CPUE > quantile(AVG_CPUE, 0.50)) -> perc50 #187 stations
+  filter(AVG_CPUE > quantile(AVG_CPUE, 0.50)) -> perc50 #174 stations
 #Lets go with the 50th percentile for defining core area 
 
 #Join lat/long back in to perc50 dataset and plot
@@ -59,14 +69,24 @@ sc_strata %>%
   dplyr::rename(GIS_STATION = STATION_ID) %>%
   right_join(perc50) -> perc50_core
 
+#Quick plot
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+ggplot(data = world) +
+  geom_sf() +
+  geom_point(data = perc50_core, aes(x = LONGITUDE, y = LATITUDE), size = 2, 
+             shape = 23, fill = "darkred") +
+  coord_sf(xlim = c(-180, -159), ylim = c(54, 64), expand = FALSE) +
+  theme_bw() #looks about right! 
+
 #Write csv for stations in 50th percentile of avg CPUE  
-write.csv(perc50_core, file="./Output/sc_area_50perc.csv")
+write.csv(perc50_core, file="./Output/snow_core_area.csv")
 
 ##################################################
 #Benthic invert CPUE
 
 #Use core area dataset to spatially subset invert data 
-sta <- read_csv("./Output/sc_area_50perc.csv")
+sta <- read_csv("./Output/snow_core_area.csv")
 sta %>% 
   pull(GIS_STATION) -> core
 
@@ -126,13 +146,16 @@ benthic %>%
             Ascidians = mean(Ascidians_cpue),
             Total_Benthic = mean(Total_Benthic_cpue))-> SCbenthic_timeseries
 
-write_csv(SCbenthic_timeseries, file = "./Output/SCbenthic_timeseries.csv")
+#Add in missing 2020 line and write output 
+missing <- data.frame(YEAR = 2020)
 
-#Load output
-benthic_cpue <- read_csv("./Output/SCbenthic_timeseries.csv")
+SCbenthic_timeseries %>%
+  bind_rows(missing) %>%
+  arrange(YEAR) %>%
+write_csv(file = "./Output/benthic_invert.csv")
 
 #Plots 
-benthic_cpue %>%
+SCbenthic_timeseries %>%
   pivot_longer(c(2:17), names_to = "benthic_guild", values_to = "CPUE_KGKM2") %>%
   ggplot(aes(x = YEAR, y = CPUE_KGKM2, group = factor(benthic_guild)))+
   geom_point(aes(colour = benthic_guild)) +
@@ -146,7 +169,8 @@ SCbenthic_timeseries %>%
   ggplot(aes(x = YEAR, y = Total_Benthic)) +
   geom_point() +
   geom_line() +
-  labs(y = "Total Benthic Invert CPUE (1000t/km2)", x = "") +
+  labs(y = "Total Benthic Invert CPUE (kg/km2)", x = "") +
+  geom_hline(aes(yintercept = mean(Total_Benthic)), linetype = 2)+
   theme_bw()+
   theme(panel.grid = element_blank()) 
 

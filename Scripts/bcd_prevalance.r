@@ -183,11 +183,15 @@ catch_pop %>%
   mutate(Maturity = rep("Population")) -> popprev
 
 #join datasets
+missing <- data.frame(YEAR = 2020, Population = NA, Immature = NA, Mature = NA)
+
 popprev %>%
   full_join(immprev) %>% 
   full_join(matprev) %>%
   filter(YEAR > 1988) %>%
-  pivot_wider(names_from = "Maturity", values_from = "Perc_Prevalance") -> bcs
+  pivot_wider(names_from = "Maturity", values_from = "Perc_Prevalance") %>%
+  bind_rows(missing) %>%
+  arrange(YEAR) -> bcs
 
 #Write csv for snow crab indicator 
 write.csv(bcs, file="./Output/bcd_prev.csv")
