@@ -52,7 +52,9 @@ WHERE SURVEY_DEFINITION_ID IN (143, 98) -- 143 NBS, 98 EBS
 AND tt.SURVEY_SPECIES = 1;")) 
 
 write.csv(x = a, 
-          here::here("data","gf_cpue_timeseries.csv"))
+          here::here("Data","gf_cpue_timeseries.csv"))
+
+#############################################
 
 # Alternatively, you an just download the files and manipulate locally ---------
   # this will pull all standard RACE survey data (e.g., also GOA, AI, BSS)

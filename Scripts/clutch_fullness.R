@@ -17,50 +17,6 @@ sc_catch <- read.csv("./Data/crabhaul_opilio.csv")
 strata_sc <- read.csv("./Data/crabstrata_opilio.csv")
 
 ########################################
-#Abundance of males not selected by fishery faceted by shell condition
-sc_catch %>%
-  mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  filter(HAUL_TYPE == 3,
-         SEX == 1,
-         WIDTH_1MM > 50 & WIDTH_1MM < 101,
-         YEAR >= 1988) %>%
-  mutate(SHELL_CONDITION = case_when(SHELL_CONDITION == 2 ~ "SC2",
-                                SHELL_CONDITION == 3 ~ "SC3",
-                                SHELL_CONDITION == 4 ~ "SC4",
-                                SHELL_CONDITION == 5 ~ "SC5")) %>%
-  group_by(YEAR, GIS_STATION, AREA_SWEPT, SHELL_CONDITION) %>%
-  summarise(ncrab = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-  ungroup %>%
-  # compute cpue per nmi2
-  mutate(cpue_cnt = ncrab / AREA_SWEPT) %>%
-  # join to hauls that didn't catch crab 
-  right_join(sc_catch %>% 
-               mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-               filter(HAUL_TYPE ==3,
-                      YEAR >= 1988) %>%
-               distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
-  replace_na(list(CPUE = 0)) %>%
-  #join to stratum
-  left_join(strata_sc %>%
-              select(STATION_ID, SURVEY_YEAR, STRATUM, TOTAL_AREA) %>%
-              filter(SURVEY_YEAR >= 1988) %>%
-              rename_all(~c("GIS_STATION", "YEAR",
-                            "STRATUM", "TOTAL_AREA"))) %>%
-  filter(SHELL_CONDITION != "NA") %>%
-  #Scale to abundance by strata
-  group_by(YEAR, STRATUM, TOTAL_AREA, SHELL_CONDITION) %>%
-  summarise(MEAN_CPUE = mean(cpue_cnt , na.rm = T),
-            ABUNDANCE = (MEAN_CPUE * mean(TOTAL_AREA))) %>%
-  group_by(YEAR, SHELL_CONDITION) %>%
-  #Sum across strata
-  summarise(ABUNDANCE_MIL = sum(ABUNDANCE)/1e6) -> abundance
-
-abundance %>%
-ggplot() +
-  geom_bar(aes(x= YEAR, y=ABUNDANCE_MIL), stat='identity') + 
-  facet_wrap(~SHELL_CONDITION)
-
-############################################
 #Proportion of mature females by clutch size (proxy for fecundity?)
 sc_catch %>%
   mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%

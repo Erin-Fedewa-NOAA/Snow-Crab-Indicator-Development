@@ -1,12 +1,11 @@
 # notes ----
-# Calculate "D95" for each size sex group in EBS 1988 - 2022:
+# Calculate "D95" for each size sex group in EBS:
       #area of stations that make up 95% of the cumulative cpue
 
-# last updated: 2023/8/20
+#Author: Erin Fedewa
 
-#Follow ups for 2024: 
+#Follow ups: 
   #how to address handful of missing stations? -currently using only stations sampled every yr
-  #Use size at 50% maturity as male maturity cutline for each year 
   #Plot these trends alongside abundance - is there a better metric than d95? 
 
 # load ----

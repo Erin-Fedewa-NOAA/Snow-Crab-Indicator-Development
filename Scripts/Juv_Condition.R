@@ -1,17 +1,16 @@
 # notes ----]
-# Develop indicator for juvenile snow crab condition, annual avg % DWt of hepatopancreas
+# Develop indicator for juvenile snow crab energetic condition:
+  #annual mean % DWt of hepatopancreas
 
 # Erin Fedewa
-# last updated: 2023/8/24
-
-#UPDATES for 2024: replace master csv file- 2023 data DWT data added last minute and needs 
-  #to be cleaned up 
 
 # load ----
 library(tidyverse)
 library(ggridges)
 
-sc_condition <- read.csv("./Data/opilio_condition.csv")
+#######################################
+
+sc_condition <- read.csv("./Data/condition_master.csv")
 
 #data wrangling 
 sc_condition %>%

@@ -21,6 +21,8 @@ bcs <- read_csv("./Output/bcs_prev.csv")
 cod <- read_csv("./Output/COD_output.csv")
 occ <- read_csv("./Output/TempOcc_output.csv")
 ice <- read_csv("./Output/seaice_output.csv")
+mat <- read_csv("./Data/opilio_maturation_size.csv")
+consump <- read_csv("./Data/cod_consumption.csv")
 
 # combine indices and save output
 invert %>%
@@ -257,6 +259,22 @@ eco_ind %>%
   ggtitle("Sea Ice Concentration")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> ice
 
+#Size at 50% probability of maturation
+mat %>%
+  select(year, male_size_term_molt, female_mean_size_mat) %>%
+  pivot_longer(2:3, names_to="Sex", values_to="Size_Maturity") %>%
+  filter(Sex == "male_size_term_molt") %>%
+  ggplot(aes(x = year, y =Size_Maturity))+
+  geom_point(size=3) +
+  geom_line() +
+  geom_smooth()
+  geom_hline(aes(yintercept = mean(Size_Maturity, na.rm=TRUE)), linetype = 5)
+  
+  consump %>%
+    ggplot(aes(x = year, y =consumption))+
+    geom_point(size=3) +
+    geom_line() +
+    geom_hline(aes(yintercept = mean(consumption, na.rm=TRUE)), linetype = 5)
 
 #**************************
 ## Create combined plots -----
