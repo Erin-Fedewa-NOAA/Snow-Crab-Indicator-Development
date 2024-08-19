@@ -16,7 +16,7 @@ sc_catch <- read.csv("./Data/crabhaul_opilio.csv")
   #years, we'll assign with static 83mm timeseries mean
 read_csv("./Data/opilio_maturation_size.csv") %>%
   select(year, male_size_term_molt) %>%
-  filter(year > 1988) %>%
+  filter(year > 1987) %>%
   mutate(male_size_term_molt = replace_na(male_size_term_molt, 83)) %>%
   mutate(across(male_size_term_molt, round, 2)) %>%
   rename(YEAR = year) -> mat
