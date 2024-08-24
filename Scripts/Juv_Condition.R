@@ -44,12 +44,12 @@ plot %>%
   theme(legend.position = "none")
   
 
-sc_condition %>%
-  filter(lme != "NA", #one crab collected outside the sampling design
-         lme != "NBS",
-         !vial_id %in% c("2019-65","2019-67","2019-68","2019-71","2019-66"),
-         maturity != 1) %>%
-  ggplot(aes(as.factor(year), Perc_DWT, fill=as.factor(year))) +
-  geom_boxplot() + 
-  theme_classic()
+plot %>%
+  ggplot(aes(as.factor(year), cond, fill=year)) +
+  geom_point() + 
+  labs(y = "Snow Crab Condition", x = "") +
+  theme(axis.text=element_text(size=12)) +
+  theme(legend.position = "none") +
+  geom_hline(aes(yintercept = mean(cond, na.rm=TRUE)), linetype = 5) +
+  theme_bw()
 
