@@ -22,7 +22,12 @@ sc_condition %>%
   summarise(avg_condition = mean(Perc_DWT, na.rm=T)) -> cond
 
 #Write output
-write.csv(cond, file="./Output/opilio_condition.csv")
+missing <- data.frame(year = 2020)
+
+cond %>%
+  bind_rows(missing) %>%
+  arrange(year) %>%
+write.csv(file="./Output/opilio_condition.csv")
 
 #Plot 
 sc_condition %>%
