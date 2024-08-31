@@ -17,7 +17,7 @@ sc_catch <- read.csv("./Data/crabhaul_opilio.csv")
 sc_strata <- read.csv("./Data/crabstrata_opilio.csv")
 
 #Load groundfish data queried directly from Racebase (see gf_data_pull.R script)
-benthic <- read.csv("./Data/gf_cpue_timeseries.csv")
+benthic <- read.csv("./Data/gf_cpue_timeseries_2024.csv")
 
 ############################
 #Core Area 
