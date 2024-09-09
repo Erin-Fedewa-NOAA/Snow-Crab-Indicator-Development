@@ -246,6 +246,24 @@ bcs %>%
   scale_x_continuous(limits = c(1988, year), breaks = seq(1990, year, 5)) +
   geom_hline(aes(yintercept = mean(Perc_prev, na.rm=TRUE)), linetype = 5)
   ggsave(path="./figs", "bcd_imm_prev.png")
+  
+#Just immature with preliminary PCR prevelance data added to output 
+  #PCR data calculated with Hamish 8/24 prelim run of patho data 
+  
+bcd_output <- read_csv("./Output/bcd_prev.csv")
+
+bcd_output  %>%
+    ggplot() +
+    geom_point(aes(x = YEAR, y = Immature), size=2) +
+    geom_line(aes(x = YEAR, y = Immature)) +
+    geom_point(aes(x = YEAR, y = Prelim_PCR), color="red", size=2) +
+     geom_line(aes(x = YEAR, y = Prelim_PCR), color="red") +
+    labs(y = "Disease Prevalence (%)", x = "") +
+    theme_bw() +
+    theme(axis.title.y = element_text(size=14)) +
+    theme(axis.text.x=element_text(size=14), axis.text.y=element_text(size=12)) +
+    scale_x_continuous(limits = c(1988, year), breaks = seq(1990, year, 5)) +
+    geom_hline(aes(yintercept = mean(Perc_prev, na.rm=TRUE)), linetype = 5)
 
 ##############################################
 #Northern Bering Sea 

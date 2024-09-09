@@ -5,7 +5,6 @@
 
 
 # Erin Fedewa
-# last updated: 2022/8/22
 
 # load ----
 library(tidyverse)
@@ -14,13 +13,15 @@ library(cowplot)
 library(mgcv)
 
 #Ecosystem data to combine
-invert <- read_csv("./Output/SCbenthic_timeseries.csv")
+invert <- read_csv("./Output/benthic_invert.csv")
 env <- read_csv("./Output/environmental_timeseries.csv")
 d95 <- read_csv("./Output/D95_output.csv")
-bcs <- read_csv("./Output/bcs_prev.csv")
+bcd <- read_csv("./Output/bcd_prev.csv")
 cod <- read_csv("./Output/COD_output.csv")
 occ <- read_csv("./Output/TempOcc_output.csv")
-ice <- read_csv("./Output/seaice_output.csv")
+ice <- read_csv("./Output/NSIDCseaice_output.csv")
+clutch <- read_csv("./Output/clutch_full.csv")
+ratio <- read_csv("./Output/operational_sex_ratio.csv")
 mat <- read_csv("./Data/opilio_maturation_size.csv")
 consump <- read_csv("./Data/cod_consumption.csv")
 
@@ -29,13 +30,14 @@ invert %>%
   select(YEAR, Total_Benthic) %>%
   rename(beninvert_cpue = Total_Benthic) %>%
   full_join(env %>%
-              select(YEAR, cpa, Mean_AO)) %>%
+              select(YEAR, cpa, Mean_AO) %>%
+              rename(cold_pool=cpa)) %>%
   full_join(d95 %>%
               select(YEAR, mature_male) %>%
               rename(mat_male_d95=mature_male)) %>%
-  full_join(bcs %>%
+  full_join(bcd %>%
               select(YEAR, Immature) %>%
-              rename(bcs_imm=Immature)) %>%
+              rename(bcd_imm=Immature)) %>%
   full_join(cod %>%
               select(YEAR, mature_male) %>%
               rename(mat_male_COD = mature_male)) %>%
@@ -43,13 +45,23 @@ invert %>%
               select(YEAR, Immature) %>%
               rename(temp_occ_imm = Immature)) %>%
   full_join(ice %>%
-              select(year, Jan_ice) %>%
+              select(Year, JanFeb_avg) %>%
+              rename(YEAR=Year, sea_ice=JanFeb_avg)) %>%
+  full_join(clutch %>%
+              select(YEAR, Prop_full) %>%
+              rename(clutch_full=Prop_full)) %>%
+  full_join(ratio %>%
+              select(YEAR, op_sex_ratio)) %>%
+  full_join(mat %>%
+              select(year, male_size_term_molt) %>%
+              rename(YEAR=year)) %>%
+  full_join(consump %>%
+              select(year, consumption) %>%
               rename(YEAR=year)) %>%
   rename(year = YEAR) %>%
   filter(year >= 1982) %>%
   arrange(year) -> eco_ind
 
-write_csv(eco_ind, "./Data/snow_eco_indicators.csv")
 
 #Assess collinearity b/w indicators 
 eco_ind %>% 
@@ -58,10 +70,43 @@ eco_ind %>%
   corrplot(method="number")
 
 ################################################
-#Ecosystem Plots 
+#Larval Indicator Plots 
 
-#Reading in new data with cod consumption and SAM added manually from contributor csv's 
-eco_ind <- read.csv("./Data/snow_2023_indicators.csv")
+eco_ind %>%
+  ## Chl-A 
+  select(year, Chl_a) %>%
+  ggplot(aes(x = year, y = Chl_a))+
+  geom_point(size=3)+
+  geom_line() +
+  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_hline(aes(yintercept = mean(Chl_a, na.rm=TRUE)), linetype = 5)+
+  geom_hline(aes(yintercept = quantile(Chl_a, .10, na.rm=TRUE)), linetype = 3)+
+  geom_hline(aes(yintercept = quantile(Chl_a, .90, na.rm=TRUE)), linetype = 3)+
+  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Chlorophyll-a (ug/l)", x = "")+
+  #scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Chlorophyll-a Biomass")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> chla
+
+eco_ind %>%
+  ## Arctic Oscillation
+  select(year, Mean_AO ) %>%
+  ggplot(aes(x = year, y = Mean_AO ))+
+  geom_point(size=3)+
+  geom_line() +
+  geom_hline(aes(yintercept = mean(Mean_AO, na.rm=TRUE)), linetype = 5)+
+  geom_hline(aes(yintercept = quantile(Mean_AO, .10, na.rm=TRUE)), linetype = 3)+
+  geom_hline(aes(yintercept = quantile(Mean_AO, .90, na.rm=TRUE)), linetype = 3)+
+  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Deviation", x = "") +
+  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Arctic Oscillation")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> AO
+
 
 eco_ind %>%
   ## Male SAM 
@@ -119,24 +164,6 @@ eco_ind %>%
   ggtitle("Benthic Invert Density")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> invert 
 
-eco_ind %>%
-  ## Chl-A 
-  select(year, Chl_a) %>%
-  ggplot(aes(x = year, y = Chl_a))+
-  geom_point(size=3)+
-  geom_line() +
-  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(Chl_a, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(Chl_a, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(Chl_a, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Chlorophyll-a (ug/l)", x = "")+
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
-  ggtitle("Chlorophyll-a Biomass")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> chla
-
 
 eco_ind %>%
   ##Cold Pool Extent
@@ -174,22 +201,6 @@ eco_ind %>%
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
   theme(axis.text=element_text(size=12))  -> occtemp
 
-eco_ind %>%
-  ## Arctic Oscillation
-  select(year, Mean_AO ) %>%
-  ggplot(aes(x = year, y = Mean_AO ))+
-  geom_point(size=3)+
-  geom_line() +
-  geom_hline(aes(yintercept = mean(Mean_AO, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(Mean_AO, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(Mean_AO, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Deviation", x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
-  ggtitle("Arctic Oscillation")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> AO
 
 eco_ind %>%
   ## Mature Male COD  
@@ -337,5 +348,7 @@ plot_grid(COD, maleD95, occtemp,
 ## write plot
 ggsave(filename = "./Figs/four.png", device = "png", width = 6, height = 12, 
        dpi = 300)
+
+
 
 
