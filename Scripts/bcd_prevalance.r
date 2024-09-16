@@ -267,7 +267,7 @@ bcd_output  %>%
 
 ##############################################
 #Northern Bering Sea 
-  #Note that 2018/2023 strata area calculated from ONlY stations sampled 
+  #Note that 2018 strata area calculated from ONlY stations sampled 
 
 #compute cpue by disease code 2 for entire NBS population
 crab_nbs %>% 

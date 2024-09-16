@@ -4,6 +4,8 @@
 
 # Erin Fedewa
 
+#2025 improvements: move to biomass? 
+
 # load ----
 library(tidyverse)
 library(mgcv)

@@ -4,6 +4,9 @@
 
 # Erin Fedewa
 
+#2025 improvements: Use model-based bayesian output for annual mean to control
+  #for julian date and crab size? 
+
 # load ----
 library(tidyverse)
 library(ggridges)
