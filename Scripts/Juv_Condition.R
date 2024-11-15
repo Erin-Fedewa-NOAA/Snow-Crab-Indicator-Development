@@ -39,10 +39,9 @@ write.csv(file="./Output/opilio_condition.csv")
 #Plots 
 sc_condition %>%
   filter(lme != "NA", #one crab collected outside the sampling design
-         lme != "NBS",
          !vial_id %in% c("2019-65","2019-67","2019-68","2019-71","2019-66"),
          maturity != 1) %>%
-  group_by(year) %>%
+  group_by(year, lme) %>%
   summarise(sd = sd(Perc_DWT, na.rm = TRUE),
     cond = mean(Perc_DWT, na.rm=T)) %>%
   bind_rows(missing) %>%
@@ -53,11 +52,14 @@ plot %>%
   ggplot(aes(as.factor(year), cond, fill=year)) +
   geom_bar(stat="identity") + 
   geom_errorbar(aes(ymin = cond-sd, ymax = cond+sd), width = 0.2, color="gray45") +
-  theme_classic() +
+  theme_bw() +
   labs(y = "Snow Crab Condition (% DWT)", x = "") +
   theme(axis.text=element_text(size=12)) +
   theme(legend.position = "none") +
-  geom_hline(yintercept=24, color="red") #adding prelim threshold from starvation lab experiment
+  geom_hline(yintercept=22.6, color="red") + #adding prelim threshold from starvation lab experiment
+  geom_rect(aes(xmin=0, xmax=Inf, ymin=22.6, ymax=22.6 + 2.9), fill="red", alpha = 0.05) + 
+  geom_rect(aes(xmin=0, xmax=Inf, ymin=22.6-2.9, ymax=22.6), fill="red", alpha = 0.05) +
+  facet_wrap(~lme)
   
 #plot annual mean as dot plot
 plot %>%
