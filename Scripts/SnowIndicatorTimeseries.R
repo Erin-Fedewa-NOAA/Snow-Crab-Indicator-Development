@@ -52,12 +52,12 @@ invert %>%
               rename(clutch_full=Prop_full)) %>%
   full_join(ratio %>%
               select(YEAR, op_sex_ratio)) %>%
-  full_join(mat %>%
-              select(year, male_size_term_molt) %>%
-              rename(YEAR=year)) %>%
-  full_join(consump %>%
-              select(year, consumption) %>%
-              rename(YEAR=year)) %>%
+  #full_join(mat %>%
+              #select(year, male_size_term_molt) %>%
+              #rename(YEAR=year)) %>%
+  #full_join(consump %>%
+              #select(year, consumption) %>%
+              #rename(YEAR=year)) %>%
   rename(year = YEAR) %>%
   filter(year >= 1982) %>%
   arrange(year) -> eco_ind
@@ -184,20 +184,22 @@ eco_ind %>%
 
 eco_ind %>%
   ## Immature Temperature of Occupancy   
-  select(YEAR, DATA_VALUE, PRODUCT) %>%
-  filter(PRODUCT == "Summer_Snow_Crab_Juvenile_Temperature_Occupancy") %>%
-  ggplot(aes(x = YEAR, y = DATA_VALUE))+
+  select(year, temp_occ_imm) %>%
+  ggplot(aes(x = year, y = temp_occ_imm))+
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(DATA_VALUE, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(DATA_VALUE, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(DATA_VALUE, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2022.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = expression("Temperature of Cccupancy ("*~degree*C*")"), x = "") +
-  scale_x_continuous(breaks = seq(1980, 2023, 5)) +
+  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm=TRUE)), linetype = 5)+
+  geom_hline(aes(yintercept = quantile(temp_occ_imm, .10, na.rm=TRUE)), linetype = 3)+
+    annotate("rect", ymin=1.723647,ymax=Inf,xmin=-Inf,xmax=Inf, alpha=0.2, fill= "#DF5C47") +
+  geom_hline(aes(yintercept = quantile(temp_occ_imm, .90, na.rm=TRUE)), linetype = 3)+
+    annotate("rect", ymin=-Inf,ymax=-0.8497369 ,xmin=-Inf,xmax=Inf, alpha=0.2, fill= "#6B87B9") +
+  annotate("rect", xmin=2023.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "grey") +
+  labs(y = expression("Temperature of Occupancy ("*~degree*C*")"), x = "") +
   theme_bw() +
+  xlim(1985, NA) +
+  scale_x_continuous(breaks = seq(1985, 2023, 5)) +
   theme(panel.grid = element_blank()) +
-  ggtitle("Immature Snow Crab Temperature of Occupancy")+
+  #ggtitle("Immature Snow Crab Temperature of Occupancy")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
   theme(axis.text=element_text(size=12))  -> occtemp
 
