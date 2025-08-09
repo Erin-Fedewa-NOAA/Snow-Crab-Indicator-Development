@@ -2,35 +2,6 @@
 #Snow Crab Latitude center of abundance in EBS by size/sex category
 
 
-#Last update: 8/22/23
-
-#load----
-library(tidyverse)
-library(rsample)
-
-# data ----
-
-#Exclude corner stations
-corner <- list("QP2625","ON2625","HG2019","JI2120","IH1918",
-               "GF2221","HG1918","GF2019","ON2524","PO2726",
-               "IH2221","GF1918","JI2221","JI2019","JI1918",
-               "HG2221","QP2726","PO2423","IH2019","PO2625",
-               "QP2423","IH2120","PO2524","HG2120","GF2120",
-               "QP2524")
-
-#size at 50% prob of terminal molt lookup
-#we'll use this to assign male maturity by year, but b/c were missing 
-#years, we'll assign with static 83mm timeseries mean
-read_csv("./Data/opilio_maturation_size.csv") %>%
-  select(year, male_size_term_molt) %>%
-  filter(year > 1987) %>%
-  mutate(male_size_term_molt = replace_na(male_size_term_molt, 83)) %>%
-  mutate(across(male_size_term_molt, round, 2)) %>%
-  rename(YEAR = year) -> mat
-
-## EBS haul data 
-sc_catch <- read.csv("./Data/crabhaul_opilio.csv")
-
 #############################
 
 ## compute cpue by size-sex group for each station

@@ -1,5 +1,6 @@
-# notes ----
 # Pcod/Snow Crab Spatial Overlap in EBS and NBS 
+#Exploratory script only- NOT a formal ESP indicator since we already have pcod 
+  #consumption, which is likely a better picture of predation pressure 
 
 #Updates to incorporate for 2024: 
   #Combined EBS/NBS overlap metric - need NBS cod data 
@@ -64,5 +65,6 @@ ggplot(aes(x = YEAR, y = overlap)) +
 #May need to factor in size of cod and density of both species (i.e. caluculate CPUE
 #at each station for crab and cod, and then use a ratio for overlap to quantify)
 #Rationale is that in warm years, theres more overlap of high density cod stations-
-  #need to set a cod CPUE threshold to weed out stations where only catching a few 
+  #need to set a cod CPUE threshold to weed out stations where only catching a few
+#Can also switch to spatiotemporal modeling approach- building SDMs to measure overlap 
 

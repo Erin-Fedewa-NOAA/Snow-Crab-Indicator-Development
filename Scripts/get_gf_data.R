@@ -2,6 +2,7 @@
 #for calculating mean CPUE of groundfish/benthic invert guilds 
 
 library(gapindex)
+library(RODBC)
 
 #Connect to AFSC Oracle Database
 source("C:/Users/erin.fedewa/Work/R/ConnectToOracle.R")
