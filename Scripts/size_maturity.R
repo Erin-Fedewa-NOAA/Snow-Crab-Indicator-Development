@@ -1,61 +1,67 @@
+#Mean size at maturity (females) and size at 50% probability of
+  #maturation (males) indicators 
 
-
+#NOTE: changes to male maturity indicator reflect changes to maturity
+  #cutline workflow in crabpack
+#For 2026: measure shifts in male maturity as deviations (-/+) from mean maturity
+  #curve? 50% proportion is a single inflection point estimate, and doesn't capture 
+  #maturity dynamics across the range of sizes in the male population well
 
 source("./scripts/get_crab_data.R")
 
-#write csv for male 50% size at maturity
-mat_size %>%
+##########################
+##male size at terminal molt indicator
+  #we use timeseries averages for years with missing data when classifying maturity 
+  #in other indicator script, but for the raw indicator, we'll stick to NAs
+get_male_maturity(species = "SNOW", 
+                  region = "EBS")$model_parameters %>% 
+  select(-c("A_EST", "A_SE")) %>%
+  rename(MAT_SIZE = B_EST, 
+         STD_ERR = B_SE) %>%
+  right_join(., expand_grid(YEAR = years,
+                            SPECIES = "SNOW", 
+                            REGION = "EBS",
+                            DISTRICT = "ALL")) -> male_mat
 
-## Plot male size at terminal molt
-ggplot(data = mat_size %>% 
-         filter(DISTRICT == "ALL", !is.na(STD_ERR)) %>%
-         right_join(., expand.grid(YEAR = years)),
-       aes(x = YEAR, y = MAT_SIZE)) +
+#plot
+male_mat %>%
+  ggplot(aes(x = YEAR, y = MAT_SIZE)) +
   geom_point() +
   geom_line() +
   geom_hline(aes(yintercept = mean(MAT_SIZE, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(MAT_SIZE, na.rm = TRUE) - sd(MAT_SIZE, na.rm = TRUE)), color = "green4") +
   geom_hline(aes(yintercept = mean(MAT_SIZE, na.rm = TRUE) + sd(MAT_SIZE, na.rm = TRUE)), color = "green4") +
-  labs(x = "Year", y = "Male Tanner Crab Size\nat 50% Maturity (mm)") +   
+  labs(x = "Year", y = "Male Snow Crab Size\nat 50% Maturity (mm)") +   
   xlim(min(years), max(years)) +
   theme_bw() +
   theme(legend.title = element_blank())
 
-ggsave(paste0(fig_dir, "male_SAM.png"), height = 2, width = 6)
-
 #Calculate female size at maturity
   #i.e. mean mature female size (new hardshell only)
-female_size <- calc_bioabund(crab_data = tanner,
-                             species = "TANNER",
-                             region = "EBS",
-                             year = years,                             
-                             crab_category = "mature_female",
-                             shell_condition = "new_hardshell",
-                             bin_1mm = TRUE)
-
-mean_size <- female_size %>%
+snow$specimen %>%
+  filter(SEX == 2 & CLUTCH_SIZE > 0 & SHELL_CONDITION == 2) %>%
+  group_by(YEAR, SIZE, STATION_ID, AREA_SWEPT) %>%
+  mutate(cpue = sum(SAMPLING_FACTOR) / AREA_SWEPT) %>%
+  ungroup() %>%
   group_by(YEAR) %>%
-  summarize(MEAN_SIZE = weighted.mean(SIZE_1MM, w = ABUNDANCE)) %>%
-  right_join(., expand.grid(YEAR = years)) %>%
-  arrange(YEAR)
-
-
-
-# Plot
-ggplot(mean_size, aes(x = YEAR, y = MEAN_SIZE)) +
+  summarize(female_maturity = weighted.mean(SIZE, w = cpue)) -> female_mean_size
+  
+#plot
+female_mean_size %>%
+ggplot(aes(x = YEAR, y = female_maturity)) +
   geom_point() +
   geom_line() +
-  labs(x = "Year", y = "Mean Mature Female\nTanner Crab Size (mm)") +
-  geom_hline(aes(yintercept = mean(MEAN_SIZE, na.rm = TRUE)), linetype = 5) +
-  geom_hline(aes(yintercept = mean(MEAN_SIZE, na.rm = TRUE) - sd(MEAN_SIZE, na.rm = TRUE)), color = "green4") +
-  geom_hline(aes(yintercept = mean(MEAN_SIZE, na.rm = TRUE) + sd(MEAN_SIZE, na.rm = TRUE)), color = "green4") +
+  labs(x = "Year", y = "Mean Mature Female\nSnow Crab Size (mm)") +
+  geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE) - sd(female_maturity, na.rm = TRUE)), color = "green4") +
+  geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE) + sd(female_maturity, na.rm = TRUE)), color = "green4") +
   xlim(min(years), max(years)) +
   theme_bw()
-ggsave(paste0(fig_dir, "female_SAM.png"), height = 2, width = 6)
 
-
-# Save output
-mean_size %>%
-  rename(year = YEAR,
-         female_sam = MEAN_SIZE) %>%
-  write_csv("./outputs/female_SAM.csv")
+#Save indicator output
+male_mat %>%
+  select(-SPECIES, -REGION, -DISTRICT) %>%
+  rename(male_maturity = MAT_SIZE,
+         male_std_err = STD_ERR) %>%
+  left_join(female_mean_size) %>%
+  write_csv("./Output/snow_SAM.csv")

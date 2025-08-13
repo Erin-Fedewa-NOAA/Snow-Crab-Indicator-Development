@@ -5,6 +5,7 @@
 #Updates to incorporate for 2024: 
   #Combined EBS/NBS overlap metric - need NBS cod data 
   #See notes at bottom of script: incorporate cod density threshold? 
+  #touch base with Sam on overlap metric? 
  
 # Erin Fedewa
 # Last Updated 8/29/2022

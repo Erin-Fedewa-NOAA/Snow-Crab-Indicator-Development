@@ -30,6 +30,8 @@ snow_nbs <- get_specimen_data(species = "SNOW",
                           region = "NBS",
                           channel = "KOD")
 
+haul <- snow$haul
+
 #Define standard stations and corner stations ----
   #(NOTE: corner stations dropped in 2024)
 stations <- read.csv("Y:/KOD_Survey/EBS Shelf/Data_Processing/Data/lookup_tables/station_lookup.csv")

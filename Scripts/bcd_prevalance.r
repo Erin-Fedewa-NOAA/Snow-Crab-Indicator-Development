@@ -37,7 +37,6 @@ pop_abun <- calc_bioabund(crab_data = snow,
 imm_bcd <- snow
 imm_bcd$specimen <- imm_bcd$specimen %>%
   left_join(mat_size) %>%
-  group_by(YEAR) %>%
   filter(((SEX == 2 & CLUTCH_SIZE == 0) |
             (SEX == 1 & SIZE < MAT_SIZE)),
          DISEASE_CODE == 2) 
@@ -73,6 +72,7 @@ pop_nbs_bcd$specimen <- pop_nbs_bcd$specimen %>%
 
 pop_nbs_bcd_abun <- calc_bioabund(crab_data = pop_nbs_bcd,
                               species = "SNOW",
+                              region = "NBS",
                               years = 1989:current_year,
                               spatial_level = "region") %>%
   mutate(CATEGORY = "pop_nbs_bcd")
@@ -80,28 +80,29 @@ pop_nbs_bcd_abun <- calc_bioabund(crab_data = pop_nbs_bcd,
 #NBS Abundance of total population (infected & not infected)
 pop_nbs_abun <- calc_bioabund(crab_data = snow_nbs, 
                           species = "SNOW",
+                          region = "NBS",
                           years = 1989:current_year,
                           spatial_level = "region") %>%
   mutate(CATEGORY = "pop_nbs")
 
-###Hmmm, getting empty dataframes for calc_bioabund() NBS call. 
-  #Moving on for now without NBS data. 
 
 #####################################################
 ## Combine abundance estimates, calculate % prevalence 
-prev <- rbind(pop_bcd_abun, pop_abun, imm_bcd_abun, imm_abun) %>%
+prev <- rbind(pop_bcd_abun, pop_abun, imm_bcd_abun, imm_abun, pop_nbs_bcd_abun, pop_nbs_abun) %>%
   select(-c("ABUNDANCE_CV","ABUNDANCE_CI", 
             "BIOMASS_MT", "BIOMASS_MT_CV", "BIOMASS_MT_CI", 
             "BIOMASS_LBS", "BIOMASS_LBS_CV", "BIOMASS_LBS_CI")) %>%
   pivot_wider(names_from = CATEGORY, values_from = ABUNDANCE) %>%
-  mutate(pop_prev = (pop_bcd/pop)*100,
-         imm_prev = (imm_bcd/imm)*100) %>%
-    select(YEAR, REGION, pop_prev, imm_prev)
+  mutate(pop_prev_ebs = (pop_bcd/pop)*100,
+         imm_prev_ebs = (imm_bcd/imm)*100,
+         pop_prev_nbs = (pop_nbs_bcd/pop_nbs)) %>%
+  select(YEAR, REGION, pop_prev_ebs, imm_prev_ebs, pop_prev_nbs)
 
-#Combined Plot 
-#NOTE: 2021 has zero prev for 2 size/sex categories
+#EBS only 
 prev %>%
-  pivot_longer(3:4, names_to="Maturity", values_to="Perc_prev") %>%
+  pivot_longer(3:5, names_to="Maturity", values_to="Perc_prev") %>%
+  filter(REGION == "EBS",
+         Maturity %in% c("pop_prev_ebs", "imm_prev_ebs")) %>%
   ggplot(aes(x = YEAR, y = Perc_prev, group = as.factor(Maturity))) +
   geom_point(aes(colour = Maturity), size=3) +
   geom_line(aes(colour = Maturity), size=1) +
@@ -112,10 +113,11 @@ prev %>%
   theme(axis.title.y = element_text(size=14)) +
   theme(axis.text.x=element_text(size=14), axis.text.y=element_text(size=12)) +
   theme(legend.title= element_blank()) 
+#Very tightly coupled! 
 
-#Faceted plot 
+#Faceted by region
 prev %>%
-  pivot_longer(3:4, names_to="Maturity", values_to="Perc_prev") %>%
+  pivot_longer(3:5, names_to="Maturity", values_to="Perc_prev") %>%
   ggplot(aes(x = YEAR, y = Perc_prev)) +
   geom_point(aes(colour = Maturity), size=3) +
   geom_line(aes(colour = Maturity), size=1) +
@@ -126,12 +128,16 @@ prev %>%
   theme(axis.title.y = element_text(size=14)) +
   theme(axis.text.x=element_text(size=10), axis.text.y=element_text(size=12)) +
   theme(legend.title= element_blank()) +
-  facet_wrap(~Maturity)
+  facet_wrap(~REGION)
+ggsave("./Figs/bcd_prev.png")
+#Interestingly, visual prevalence is much lower in the NBS despite increased 
+  #likelihood of seeing more advanced stage infections 
 
 ## Write .csv for BCD indicator
 missing <- data.frame(YEAR = 2020, REGION = "EBS", pop_prev = NA, imm_prev = NA)
 
 prev %>%
+  select(-pop_prev_nbs) %>%
   bind_rows(missing) %>%
   arrange(YEAR) %>%
   write.csv("./Output/bcd_prevalence.csv", row.names = FALSE)

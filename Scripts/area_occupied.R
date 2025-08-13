@@ -1,49 +1,38 @@
-# notes ----
 # Calculate "D95" for each size sex group in EBS:
       #area of stations that make up 95% of the cumulative cpue
 
 #Author: Erin Fedewa
 
 #Follow ups: 
-  #how to address handful of missing stations? -currently using only stations sampled every yr
-  #Plot these trends alongside abundance - is there a better metric than d95? 
+  #move toward spatiotemporal modeling approach to account for changing footprint
+  #current approach is only using stations sampled every year
 
 # load ----
 library(tidyverse)
 
-
+## Read in setup
+source("./Scripts/get_crab_data.R")
 
 ##########################################
-
-#Stations sampled in each year
-sc_catch %>%
-  group_by(CRUISE) %>%
-  summarise(num_stations = length(unique(GIS_STATION))) %>%
-  print(n=60)
-#Lets determine core area from standardized timeseries (post-1987), though
-  #noting that 1992 D95 index will not be very accurate 
-
-## compute cpue by size-sex group for each station
-sc_catch %>% 
-  mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  left_join(mat) %>%
-  filter(HAUL_TYPE == 3, 
-         SEX %in% 1:2,
-         YEAR > 1987) %>%
-  mutate(size_sex = ifelse(SEX == 1 & WIDTH_1MM < male_size_term_molt, "immature_male",
-                        ifelse(SEX == 1 & WIDTH_1MM >= male_size_term_molt, "mature_male",
-                              ifelse(SEX == 2 & CLUTCH_SIZE >= 1, "mature_female",
-                                      ifelse(SEX == 2 & CLUTCH_SIZE == 0, "immature_female", NA))))) %>%
-  group_by(YEAR, GIS_STATION, MID_LATITUDE, MID_LONGITUDE, AREA_SWEPT, size_sex) %>%
-  summarise(num_crab = round(sum(SAMPLING_FACTOR))) %>%
-  filter(!is.na(AREA_SWEPT)) %>%
-  pivot_wider(names_from = size_sex, values_from = num_crab) %>%
-  mutate(pop = sum(immature_male, mature_male, immature_female, mature_female, na.rm = T)) %>%
-  pivot_longer(c(6:10), names_to = "size_sex", values_to = "num_crab") %>%
-  filter(size_sex != "NA") %>%
-  mutate(num_crab = replace_na(num_crab, 0),
-         cpue = num_crab / AREA_SWEPT) %>%
-  ungroup() -> cpue_long
+#Assign maturity to specimen data; calculate CPUE
+cpue <- snow$specimen %>% 
+  left_join(., mat_size) %>%
+  mutate(CATEGORY = case_when((SEX == 1 & SIZE >= MAT_SIZE) ~ "mature_male",
+                              (SEX == 1 & SIZE < MAT_SIZE) ~ "immature_male",
+                              (SEX == 2 & CLUTCH_SIZE >= 1) ~ "mature_female",
+                              (SEX == 2 & CLUTCH_SIZE == 0) ~ "immature_female",
+                              TRUE ~ NA)) %>%
+  filter(YEAR %in% years,
+         !is.na(CATEGORY)) %>%
+  group_by(YEAR, STATION_ID, LATITUDE, LONGITUDE, AREA_SWEPT, CATEGORY) %>%
+  summarise(COUNT = round(sum(SAMPLING_FACTOR))) %>%
+  pivot_wider(names_from = CATEGORY, values_from = COUNT) %>%
+  mutate(population = sum(immature_male, mature_male, immature_female, mature_female, na.rm = T)) %>%
+  pivot_longer(c(6:10), names_to = "CATEGORY", values_to = "COUNT") %>%
+  filter(CATEGORY != "NA") %>%
+  mutate(COUNT = replace_na(COUNT, 0),
+         CPUE = COUNT / AREA_SWEPT) %>%
+  ungroup() 
 
 # compute D95 by each size and sex category ----
 # i.e. the number of stations contributing to 95% of cumulative cpue
@@ -51,8 +40,8 @@ sc_catch %>%
 # function to compute D95
 f_d95_est <- function(x){
   x %>%
-    arrange(-cpue) %>% #sort by cpue (large:small)
-    mutate(prop_cpue = cpue/sum(cpue),  #calculate the proportion of total cpue for each station
+    arrange(-CPUE) %>% #sort by cpue (large:small)
+    mutate(prop_cpue = CPUE/sum(CPUE),  #calculate the proportion of total cpue for each station
            cum_cpue = cumsum(prop_cpue)) %>%  
     filter(cum_cpue <= 0.95) %>% #T if in d95, F if not
     count() %>%
@@ -61,39 +50,75 @@ f_d95_est <- function(x){
 }
 
 # do the estimation
-cpue_long %>%
-  filter(!(GIS_STATION %in% corner)) %>% #exclude corner stations
-  nest(-YEAR, -size_sex) %>%
+cpue %>%
+  filter(!(STATION_ID %in% corners)) %>% #exclude corner stations
+  nest(data = c(-YEAR, -CATEGORY)) %>%
   mutate(d95 = purrr::map_dbl(data, f_d95_est)) %>% #apply d95 function to each element 
-  unnest() %>%
-  group_by(YEAR, size_sex) %>%
-  summarise(cpue = sum(num_crab) / sum(AREA_SWEPT), # add a column for total cpue of each group in each year
+  unnest(cols = c(data)) %>%
+  group_by(YEAR, CATEGORY) %>%
+  summarise(mean_cpue = mean(CPUE), # add a column for mean cpue of each group in each year
             d95 = mean(d95)) -> d95 # take 'mean' just to get one value (they are all the same)
   
-#plot
+#plot by size/sex
 d95 %>%
-  select(YEAR, size_sex, d95) %>%
-  ggplot(aes(x = YEAR, y = d95, group= size_sex, color = size_sex))+
+  select(YEAR, CATEGORY, d95) %>%
+  ggplot(aes(x = YEAR, y = d95, group= CATEGORY, color = CATEGORY))+
   geom_point(size=3)+
   geom_line() +
-  theme_bw()
+  theme_bw() +
+  facet_wrap(~CATEGORY)
 
 #plot just mature males, our indicator
 d95 %>%
-  select(YEAR, size_sex, d95) %>%
-  filter(size_sex == "mature_male") %>%
+  select(YEAR, CATEGORY, d95) %>%
+  filter(CATEGORY == "mature_male") %>%
   ggplot(aes(x = YEAR, y = d95))+
   geom_point(size=3)+
   geom_line() +
   geom_hline(aes(yintercept = mean(d95, na.rm=TRUE)), linetype = 5) +
   theme_bw()
 
+#d95 vs. abund plot
+d95 %>%
+  filter(!CATEGORY == "population") %>%
+ggplot(aes(x = mean_cpue, y = d95, group = CATEGORY, color = CATEGORY)) +
+  geom_point() +
+  # geom_line() +
+  geom_smooth(method = 'lm') +
+  labs(x = "CPUE", y = expression("Area Occupied ("~nmi^2~")")) +
+  theme_bw() +
+  theme(legend.title = element_blank()) +
+  facet_wrap(~CATEGORY, scales = "free")
+#interesting male vrs female relationship!
+
+#d95 vs. bottom temperature plot
+haul %>%
+  filter(!HAUL_TYPE == 17) %>%
+  distinct(YEAR, STATION_ID, GEAR_TEMPERATURE) %>%
+  group_by(YEAR) %>%
+  summarise(summer_bt = mean(GEAR_TEMPERATURE, na.rm = T)) %>%
+  right_join(d95, by="YEAR") %>%
+ggplot(aes(x = summer_bt, y = d95, group = CATEGORY, color = CATEGORY)) +
+  geom_point() +
+  # geom_line() +
+  geom_smooth(method = 'lm') +
+  labs(x = "Bottom Temperature (C)", y = expression("Area Occupied ("~nmi^2~")")) +
+  theme_bw() +
+  theme(legend.title = element_blank()) +
+  facet_wrap(~CATEGORY, scales = "free")
+
+
 #Write output for D95 indicator
 missing <- data.frame(YEAR = 2020)
 
   d95 %>%
-    select(-cpue) %>%
-    pivot_wider(names_from = "size_sex", values_from = "d95") %>%
+    select(-mean_cpue) %>%
+    pivot_wider(names_from = "CATEGORY", values_from = "d95") %>%
+    rename(immature_female_d95=immature_female,
+           immature_male_d95=immature_male,
+           mature_female_d95=mature_female,
+           mature_male_d95=mature_male,
+           population_d95=population) %>%
     bind_rows(missing) %>%
     arrange(YEAR) %>%
   write.csv(file="./Output/D95_output.csv")

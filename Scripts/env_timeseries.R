@@ -3,41 +3,34 @@
 #Arctic Oscillation is pulled from NOAA-NWS via:
 #https://www.cpc.ncep.noaa.gov/products/precip/CWlink/daily_ao_index/ao.shtml
 
-#TO DO: Date correct and impute missing temperatures 
+#TO DO: Impute missing temperatures (date correction added in 2025)
 
 # Erin Fedewa
 
 # load ----
 library(tidyverse)
+library(mgcv)
 
-#Corner station look up table for cold pool extent calculations 
-corner <- c("QP2625","ON2625","HG2019","JI2120","IH1918",
-            "GF2221","HG1918","GF2019","ON2524","PO2726",
-            "IH2221","GF1918","JI2221","JI2019","JI1918",
-            "HG2221","QP2726","PO2423","IH2019","PO2625",
-            "QP2423","IH2120","PO2524","HG2120","GF2120",
-            "QP2524")
+## Read in setup
+source("./Scripts/get_crab_data.R")
 
-# BT survey data ----
-temp <- read_csv("./Data/crabhaul_opilio.csv") 
-
+#########################################################
 #Num of stations with data each yr 
-temp %>%
-  mutate(YEAR = str_extract(CRUISE, "\\d{4}")) %>%
+haul %>%
   group_by(YEAR) %>%
-  summarise(station = length(unique(GIS_STATION))) %>%
+  summarise(station = length(unique(STATION_ID))) %>%
   print(n=50)
 #Missing stations in early years-lets pull 1988+, though still 
   #missing data that should be interpolated/imputed 
 
 # compute mean summer bottom temperature
-temp %>%
-  mutate(YEAR = str_extract(CRUISE, "\\d{4}")) %>%
-  filter(YEAR >= 1988,
-         HAUL_TYPE ==3) %>%
-  distinct(YEAR, GIS_STATION, GEAR_TEMPERATURE) %>%
+haul %>%
+  mutate(julian=yday(parse_date_time(START_DATE, "ymd", "US/Alaska"))) %>%
+  filter(YEAR > 1987,
+         !HAUL_TYPE == 17) %>%
+  distinct(YEAR, STATION_ID, GEAR_TEMPERATURE) %>%
   group_by(YEAR) %>%
-  summarise(summer_bt = mean(GEAR_TEMPERATURE, na.rm = T))-> avg_bt
+  summarise(summer_bt = mean(GEAR_TEMPERATURE, na.rm = T)) -> avg_bt
 
 #Plot
 avg_bt %>%
@@ -47,13 +40,62 @@ avg_bt %>%
   labs(y = "Bottom temperature (C)", x = "") +
   theme_bw()
 
+#Mean date sampled 
+haul %>%
+  mutate(julian=yday(parse_date_time(START_DATE, "ymd", "US/Alaska"))) %>%
+  group_by(YEAR) %>%
+  summarise(mean_date = mean(julian, na.rm=T),
+            min_date = min(julian, na.rm=T),
+            max_date = max(julian, na.rm=T))
+
+#plot date sampled 
+haul %>%
+  mutate(julian=yday(parse_date_time(START_DATE, "ymd", "US/Alaska"))) %>%
+  ggplot(aes(julian)) +
+  geom_histogram(bins = 12, fill = "dark grey", color = "black") +
+  facet_wrap(~YEAR)  
+
+#Use GAM to "date correct" average bottom temperatures 
+haul %>%
+  filter(YEAR > 1987) %>%
+  mutate(julian=yday(parse_date_time(START_DATE, "ymd", "US/Alaska")),
+         YEAR = as.factor(YEAR)) %>%
+  filter(!HAUL_TYPE == 17) -> temp.dat
+
+temp.mod <- gam(GEAR_TEMPERATURE ~ s(julian, k = 5) + YEAR, 
+                data = temp.dat)
+
+summary(temp.mod) 
+gam.check(temp.mod)  
+
+#Back transform and extract year coefficient (1988 is our intercept)
+c(coef(temp.mod)[1], coef(temp.mod)[1] + coef(temp.mod)[2:37]) -> est
+
+year <- data.frame(YEAR = c(1988:2019, 2021:2025))
+cbind(est,year) -> dat.2
+as_tibble(dat.2) %>%
+  rename(date_corrected_temp = est) -> date_temp
+
+#Plot date corrected temp
+ggplot(date_temp, aes(year, date_corrected_temp)) +
+  geom_point() +
+  geom_line()
+
+#and plot both together 
+date_temp %>%
+  full_join(avg_bt) %>%
+  pivot_longer(cols = c(1,3), names_to="index" , values_to = "avg_temp") %>%
+  ggplot(aes(YEAR, avg_temp, group=index, color=index)) +
+  geom_point() +
+  geom_line()
+
+########################################################
 #compute cold pool areal extent
-temp %>%
-  mutate(YEAR = str_extract(CRUISE, "\\d{4}")) %>%
+haul %>%
   filter(YEAR >= 1988,
-         HAUL_TYPE == 3,
-         !(GIS_STATION %in% corner)) %>%
-  distinct(YEAR, GIS_STATION, GEAR_TEMPERATURE) %>%
+         HAUL_TYPE != 17,
+         !(STATION_ID %in% corners)) %>%
+  distinct(YEAR, STATION_ID, GEAR_TEMPERATURE) %>%
   group_by(YEAR) %>%
   summarise(cpa = sum(GEAR_TEMPERATURE < 2, na.rm = T) * 401) -> cpa
 
@@ -90,11 +132,11 @@ mean_AO %>%
   theme_bw()
 
 # combine indices and save output
-avg_bt %>%
+date_temp %>%
+  full_join(avg_bt) %>%
   full_join(cpa) %>%
-  full_join(mean_AO %>%
-              mutate(YEAR = as.character(YEAR))) %>%
-  arrange(YEAR) ->env
+  full_join(mean_AO) %>% 
+  arrange(YEAR) -> env
 write_csv(env, "./Output/environmental_timeseries.csv")
 
 

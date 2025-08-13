@@ -89,6 +89,15 @@ dat %>%
   geom_point() +
   geom_text(hjust=0, vjust=0)
 
+#need to calculate competitive male index:
+#terminal molters > 94 mm/ summ of all terminal molted males 
+
+#run gams to look at clutch fullness vrs. male shell condition, male 
+  #competitive index, 
+
+
+
+
 #Clutch fullness is a very coarse proxy for reproductive potential, and 
   #observations of decline in prop of full clutches is rare in the timeseries
   #trends really not consistent with male/sperm limitation like we see in 

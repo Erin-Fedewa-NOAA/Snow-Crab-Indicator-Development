@@ -1,110 +1,49 @@
 #Calculate the proportion of large males to mature females: i.e. operational sex ratio
   #Indicator of reproductive capacity/potential for sperm limitation
 
-
 # Erin Fedewa
 
 # load ----
 library(tidyverse)
 library(ggridges)
 
-#This script needs some cleaning up next year- very redundant! 
-
-##############################################
-#Opilio haul data 
-crab_ebs <- read.csv("./Data/crabhaul_opilio.csv")
-#Opilio strata data 
-strata_ebs <- read_csv("./Data/crabstrata_opilio.csv")
-
+## Read in setup
+source("./Scripts/get_crab_data.R")
 
 ########################################
 ## compute abundance timeseries for mature females 
-crab_ebs %>% 
-  mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  filter(HAUL_TYPE == 3, 
-         YEAR > 1987) %>%
-  mutate(size_sex = ifelse(SEX == 2 & CLUTCH_SIZE >= 1,  "Mature_female", NA)) %>%
-  filter(!is.na(size_sex)) %>%
-  group_by(YEAR, GIS_STATION, AREA_SWEPT) %>%
-  summarise(ncrab = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-  ungroup %>%
-  # compute cpue per nmi2
-  mutate(cpue_cnt = ncrab / AREA_SWEPT) %>%
-  # join to hauls that didn't catch crab 
-  right_join(crab_ebs %>% 
-               mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-               filter(HAUL_TYPE ==3,
-                      YEAR > 1987) %>%
-               distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
-  replace_na(list(cpue_cnt = 0)) %>%
-  replace_na(list(ncrab = 0)) %>%
-  
-  #join to stratum
-  left_join(strata_ebs %>%
-              select(STATION_ID, SURVEY_YEAR, STRATUM, TOTAL_AREA) %>%
-              filter(SURVEY_YEAR > 1987) %>%
-              rename_all(~c("GIS_STATION", "YEAR",
-                            "STRATUM", "TOTAL_AREA"))) %>%
-  #Scale to abundance by strata
-  group_by(YEAR, STRATUM, TOTAL_AREA) %>%
-  summarise(MEAN_CPUE = mean(cpue_cnt , na.rm = T),
-            ABUNDANCE = (MEAN_CPUE * mean(TOTAL_AREA))) %>%
-  group_by(YEAR) %>%
-  #Sum across strata
-  summarise(ABUNDANCE_MIL = sum(ABUNDANCE)/1e6) %>%
-  mutate(size_sex = "mature_female") -> mat_fem_abundance
+mat_fem <- snow
+mat_fem$specimen <- mat_fem$specimen %>%
+  filter(SEX == 2,
+         CLUTCH_SIZE > 0)
 
-###############
+mat_fem_dat <- calc_bioabund(crab_data = mat_fem,
+                              species = "SNOW",
+                              region = "EBS",
+                              year = years,
+                              spatial_level = "region") %>%
+  mutate(mat_fem_abun = ABUNDANCE) %>%
+  select(YEAR, mat_fem_abun)
 
-## Now compute abundance timeseries for large males 
-crab_ebs %>% 
-  mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-  filter(HAUL_TYPE == 3, 
-         YEAR > 1987) %>%
-  mutate(size_sex = ifelse(SEX == 1 & WIDTH > 95,  "Large_male", NA)) %>%
-  filter(!is.na(size_sex)) %>%
-  group_by(YEAR, GIS_STATION, AREA_SWEPT) %>%
-  summarise(ncrab = sum(SAMPLING_FACTOR, na.rm = T)) %>%
-  ungroup %>%
-  # compute cpue per nmi2
-  mutate(cpue_cnt = ncrab / AREA_SWEPT) %>%
-  # join to hauls that didn't catch crab 
-  right_join(crab_ebs %>% 
-               mutate(YEAR = as.numeric(str_extract(CRUISE, "\\d{4}"))) %>%
-               filter(HAUL_TYPE ==3,
-                      YEAR > 1987) %>%
-               distinct(YEAR, GIS_STATION, AREA_SWEPT)) %>%
-  replace_na(list(cpue_cnt = 0)) %>%
-  replace_na(list(ncrab = 0)) %>%
-  
-  #join to stratum
-  left_join(strata_ebs %>%
-              select(STATION_ID, SURVEY_YEAR, STRATUM, TOTAL_AREA) %>%
-              filter(SURVEY_YEAR > 1987) %>%
-              rename_all(~c("GIS_STATION", "YEAR",
-                            "STRATUM", "TOTAL_AREA"))) %>%
-  #Scale to abundance by strata
-  group_by(YEAR, STRATUM, TOTAL_AREA) %>%
-  summarise(MEAN_CPUE = mean(cpue_cnt , na.rm = T),
-            ABUNDANCE = (MEAN_CPUE * mean(TOTAL_AREA))) %>%
-  group_by(YEAR) %>%
-  #Sum across strata
-  summarise(ABUNDANCE_MIL = sum(ABUNDANCE)/1e6) %>%
-  mutate(size_sex = "large_male") -> lg_male_abundance
+## Now compute abundance for large males 
+lg_male <- snow
+lg_male$specimen <- lg_male$specimen %>%
+  filter(SEX == 1,
+         SIZE > 95)
+
+lg_male_dat <- calc_bioabund(crab_data = lg_male,
+                               species = "SNOW",
+                               region = "EBS",
+                               year = years,
+                               spatial_level = "region") %>%
+  mutate(lg_male_abund = ABUNDANCE) %>%
+  select(YEAR, lg_male_abund)
 
 #combine datasets and calculate ratio
-missing <- data.frame(YEAR = 2020)
-
-lg_male_abundance %>%
-  full_join(mat_fem_abundance) %>%
-#and calculate proportion 
-group_by(YEAR) %>%
-  mutate(op_sex_ratio = ABUNDANCE_MIL[size_sex == "large_male"]/ABUNDANCE_MIL[size_sex == "mature_female"]) %>%
-  select(-ABUNDANCE_MIL, -size_sex) %>%
-  group_by(YEAR) %>%
-  summarise(op_sex_ratio = mean(op_sex_ratio)) %>%
-  bind_rows(missing) %>%
-  arrange(YEAR) -> osr
+lg_male_dat %>%
+  full_join(mat_fem_dat) %>%
+  mutate(op_sex_ratio = lg_male_abund/mat_fem_abun) %>%
+  right_join(., expand.grid(YEAR = years)) -> osr
 
 #plot
 osr %>%
@@ -114,8 +53,10 @@ osr %>%
   geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm=TRUE)), linetype = 5) +
   theme_bw()
 
-#Write csv for indicator 
-write.csv(osr, file="./Output/operational_sex_ratio.csv")
+#Write csv for indicator
+osr %>%
+  select(YEAR, op_sex_ratio) %>%
+write.csv(file="./Output/operational_sex_ratio.csv")
 
 
 
