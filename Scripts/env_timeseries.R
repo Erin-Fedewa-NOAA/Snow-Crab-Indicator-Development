@@ -97,16 +97,34 @@ haul %>%
          !(STATION_ID %in% corners)) %>%
   distinct(YEAR, STATION_ID, GEAR_TEMPERATURE) %>%
   group_by(YEAR) %>%
-  summarise(cpa = sum(GEAR_TEMPERATURE < 2, na.rm = T) * 401) -> cpa
+  summarise(extent_coldpool = sum(GEAR_TEMPERATURE < 2, na.rm = T) * 401) -> cpa
 
 #Plot
 cpa %>%
-  ggplot(aes(x = as.numeric(YEAR), y = cpa)) +
+  ggplot(aes(x = as.numeric(YEAR), y = extent_coldpool)) +
   geom_point() +
   geom_line()+
   labs(y = "Cold Pool Extent (nmi2)", x = "") +
-  geom_hline(aes(yintercept = mean(cpa, na.rm=TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(extent_coldpool, na.rm=TRUE)), linetype = 5) +
   theme_bw()
+
+#And now extent of waters <0C since that's likely a more important 
+  #threshold for snow crab 
+haul %>%
+  filter(YEAR >= 1988,
+         HAUL_TYPE != 17,
+         !(STATION_ID %in% corners)) %>%
+  distinct(YEAR, STATION_ID, GEAR_TEMPERATURE) %>%
+  group_by(YEAR) %>%
+  summarise(extent_0C = sum(GEAR_TEMPERATURE <= 0, na.rm = T) * 401) -> zero
+
+#and plot both together 
+cpa %>%
+  full_join(zero) %>%
+  pivot_longer(cols = c(2:3), names_to="index" , values_to = "extent") %>%
+  ggplot(aes(YEAR, extent, group=index, color=index)) +
+  geom_point() +
+  geom_line()
 
 ###########################################
 #Arctic Oscillation
@@ -134,6 +152,7 @@ mean_AO %>%
 # combine indices and save output
 date_temp %>%
   full_join(avg_bt) %>%
+  full_join(zero) %>%
   full_join(cpa) %>%
   full_join(mean_AO) %>% 
   arrange(YEAR) -> env

@@ -74,6 +74,21 @@ do.initPlot <- TRUE
 #Remove Correlated Covariates:
 # rem.cor.cov <- FALSE
 
+############################################################
+#calculate response: 
+
+# Calculate abundance of immature male snow crab 50-65mmm as response for BAS analysis
+#Size range selected using BSFRF selectivity curves and St. Marie 1995 size at 
+#age estimates (~5.7-6.7 years post settlement)
+
+#To update for 2024: Use upper size threshold as size at 50% maturity? Or does this make it too difficult to
+#assign lags with potentially multiple cohorts/year classes?
+#Develop a female response variable too for additional model runs?
+
+SEX == 1,
+WIDTH_1MM >= 50 & WIDTH_1MM <= 65,
+
+############################################################
 # Plotting Fxns ========================
 q.50 <- function(x) { return(quantile(x, probs=c(0.25,0.75))) }
 q.95 <- function(x) { return(quantile(x, probs=c(0.025,0.975))) }

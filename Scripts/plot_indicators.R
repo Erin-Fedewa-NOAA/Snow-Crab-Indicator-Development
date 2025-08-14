@@ -1,4 +1,3 @@
-# notes ----
 #Create master csv of ecosystem indicators 
 # Assess collinearity b/w snow crab indicators for BAS
 #Create indicator timeseries plot 
@@ -9,57 +8,56 @@
 # load ----
 library(tidyverse)
 library(corrplot)
-library(cowplot)
+library(patchwork)
 library(mgcv)
 
 #Ecosystem data to combine
 invert <- read_csv("./Output/benthic_invert.csv")
 env <- read_csv("./Output/environmental_timeseries.csv")
 d95 <- read_csv("./Output/D95_output.csv")
-bcd <- read_csv("./Output/bcd_prev.csv")
+bcd <- read_csv("./Output/bcd_prevalence.csv")
 cod <- read_csv("./Output/COD_output.csv")
 occ <- read_csv("./Output/TempOcc_output.csv")
-ice <- read_csv("./Output/NSIDCseaice_output.csv")
-clutch <- read_csv("./Output/clutch_full.csv")
+ice <- read_csv("./Output/seaice_output.csv")
+clutch <- read_csv("./Output/reproductive_potential.csv")
 ratio <- read_csv("./Output/operational_sex_ratio.csv")
-mat <- read_csv("./Data/opilio_maturation_size.csv")
+mat <- read_csv("./Output/snow_SAM.csv")
 consump <- read_csv("./Data/cod_consumption.csv")
+
+# Set years for plotting
+current_year <- 2025
+
+#########################################################
 
 # combine indices and save output
 invert %>%
   select(YEAR, Total_Benthic) %>%
   rename(beninvert_cpue = Total_Benthic) %>%
   full_join(env %>%
-              select(YEAR, cpa, Mean_AO) %>%
-              rename(cold_pool=cpa)) %>%
+              select(YEAR, extent_coldpool, extent_0C, Mean_AO)) %>%
   full_join(d95 %>%
-              select(YEAR, mature_male) %>%
-              rename(mat_male_d95=mature_male)) %>%
+              select(YEAR, mature_male_d95)) %>%
   full_join(bcd %>%
-              select(YEAR, Immature) %>%
-              rename(bcd_imm=Immature)) %>%
+              filter(REGION == "EBS") %>%
+              select(YEAR, imm_prev_ebs) %>%
+              rename(bcd_imm=imm_prev_ebs)) %>%
   full_join(cod %>%
-              select(YEAR, mature_male) %>%
-              rename(mat_male_COD = mature_male)) %>%
+              select(YEAR, mature_male_centroid)) %>%
   full_join(occ %>%
-              select(YEAR, Immature) %>%
-              rename(temp_occ_imm = Immature)) %>%
+              select(YEAR, TEMP_OCC) %>%
+              rename(temp_occ_imm = TEMP_OCC)) %>%
   full_join(ice %>%
-              select(Year, JanFeb_avg) %>%
-              rename(YEAR=Year, sea_ice=JanFeb_avg)) %>%
+              rename(YEAR=Year)) %>%
   full_join(clutch %>%
-              select(YEAR, Prop_full) %>%
-              rename(clutch_full=Prop_full)) %>%
+              select(YEAR, prop_empty) %>%
+              rename(clutch_empty=prop_empty)) %>%
   full_join(ratio %>%
               select(YEAR, op_sex_ratio)) %>%
-  #full_join(mat %>%
-              #select(year, male_size_term_molt) %>%
-              #rename(YEAR=year)) %>%
-  #full_join(consump %>%
-              #select(year, consumption) %>%
-              #rename(YEAR=year)) %>%
+  full_join(mat %>%
+              select(YEAR, male_maturity, female_maturity)) %>%
+  full_join(consump %>%
+              rename(YEAR=year)) %>%
   rename(year = YEAR) %>%
-  filter(year >= 1982) %>%
   arrange(year) -> eco_ind
 
 
@@ -72,17 +70,16 @@ eco_ind %>%
 ################################################
 #Larval Indicator Plots 
 
+## Chl-A 
 eco_ind %>%
-  ## Chl-A 
-  select(year, Chl_a) %>%
   ggplot(aes(x = year, y = Chl_a))+
   geom_point(size=3)+
   geom_line() +
   #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(Chl_a, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(Chl_a, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(Chl_a, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  geom_hline(aes(yintercept = mean(Chl_a, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(Chl_a, na.rm = TRUE) - sd(Chl_a, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(Chl_a, na.rm = TRUE) + sd(Chl_a, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = "Chlorophyll-a (ug/l)", x = "")+
   #scale_x_continuous(breaks = seq(1980, 2022, 5)) +
   theme_bw() +
@@ -90,267 +87,261 @@ eco_ind %>%
   ggtitle("Chlorophyll-a Biomass")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> chla
 
+## Arctic Oscillation
 eco_ind %>%
-  ## Arctic Oscillation
-  select(year, Mean_AO ) %>%
   ggplot(aes(x = year, y = Mean_AO ))+
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(Mean_AO, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(Mean_AO, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(Mean_AO, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  geom_hline(aes(yintercept = mean(Mean_AO, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(Mean_AO, na.rm = TRUE) - sd(Mean_AO, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(Mean_AO, na.rm = TRUE) + sd(Mean_AO, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin= (current_year - 0.5),xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = "Deviation", x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  scale_x_continuous(breaks = seq(1978,current_year, 5)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
   ggtitle("Arctic Oscillation")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> AO
+ggsave("./Figs/arctic_oscillation.png")
 
+#Juvenile Indicator Plots
 
+##Cold Pool Extent
 eco_ind %>%
-  ## Male SAM 
-  select(year, male_SAM) %>%
-  ggplot(aes(x = year, y = male_SAM))+
+  ggplot(aes(x = year, y = extent_coldpool))+
   geom_point(size=3)+
   geom_line() +
-  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(male_SAM, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(male_SAM, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(male_SAM, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = expression("Size at 50% maturity (cw)"), x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  geom_hline(aes(yintercept = mean(extent_coldpool, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(extent_coldpool, na.rm = TRUE) - sd(extent_coldpool, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(extent_coldpool, na.rm = TRUE) + sd(extent_coldpool, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Cold Pool Extent (nmi)", x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("Female Size at 50% Maturity")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> SAM
+  ggtitle("EBS Cold Pool Extent")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> cp
+ggsave("./Figs/cold_pool_extent.png")
 
+##0C Water Extent
 eco_ind %>%
-  ##Pcod_consumption
-  select(YEAR, DATA_VALUE, PRODUCT) %>%
-  filter(PRODUCT == "Summer_Snow_Crab_Consumption_Pacific_cod_Model") %>%
-  ggplot(aes(x = YEAR, y = DATA_VALUE))+
+  ggplot(aes(x = year, y = extent_0C))+
+  geom_point(size=3)+
+  geom_line() +
+  geom_hline(aes(yintercept = mean(extent_0C, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(extent_0C, na.rm = TRUE) - sd(extent_0C, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(extent_0C, na.rm = TRUE) + sd(extent_0C, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Spatial Extent (nmi)", x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle(expression("EBS Bottom Water < 0 " * degree * C * "")) +
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> zero
+ggsave("./Figs/0C_extent.png")
+
+## Immature Temperature of Occupancy  
+eco_ind %>%
+  ggplot(aes(x = year, y = temp_occ_imm)) +
+  geom_point(size=3)+
+  geom_line() +
+  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm = TRUE) - sd(temp_occ_imm, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm = TRUE) + sd(temp_occ_imm, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = expression("Temperature of Occupancy ("*~degree*C*")"), x = "") +
+  theme_bw() +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Immature Snow Crab Temperature of Occupancy")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
+  theme(axis.text=element_text(size=12))  -> occtemp
+ggsave("./Figs/temp_occupancy.png")
+
+## Sea Ice 
+eco_ind %>%
+  ggplot(aes(x = year, y = ice_avg))+
+  geom_point(size=3)+
+  geom_line() +
+  geom_hline(aes(yintercept = mean(ice_avg, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(ice_avg, na.rm = TRUE) - sd(ice_avg, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(ice_avg, na.rm = TRUE) + sd(ice_avg, na.rm = TRUE)), linetype = 3) +
+  geom_hline(yintercept = 0.15, color="#FF474C") +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Sea Ice Concentration", x = "")+
+  scale_x_continuous(breaks = seq(1975, current_year, 5)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Bering Sea Spring Sea Ice Extent")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> ice
+ggsave("./Figs/sea_ice.png")
+
+## Disease Prevalence  
+eco_ind %>%
+  ggplot(aes(x = year, y = bcd_imm))+
+  geom_point(size=3)+
+  geom_line() +
+  geom_hline(aes(yintercept = mean(bcd_imm, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(bcd_imm, na.rm = TRUE) - sd(bcd_imm, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(bcd_imm, na.rm = TRUE) + sd(bcd_imm, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Disease Prevalence (%)", x = "")+
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1989, current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Immature Snow Crab Disease Prevalence")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> bcd
+ggsave("./Figs/bitter_crab.png")
+
+## Energetic Condition
+
+
+
+
+
+##Pcod_consumption
+eco_ind %>%
+  ggplot(aes(x = year, y = consumption))+
   geom_point(size=3)+
   geom_line() +
   #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(DATA_VALUE, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(DATA_VALUE, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(DATA_VALUE, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2022.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  geom_hline(aes(yintercept = mean(consumption, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(consumption, na.rm = TRUE) - sd(consumption, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(consumption, na.rm = TRUE) + sd(consumption, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = "Consumption (mt/day)", x = "")+
-  scale_x_continuous(breaks = seq(1980, 2023, 5)) +
+  scale_x_continuous(breaks = seq(1985, current_year, 5), limits = c(1985, current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
   ggtitle("Daily Consumption of Snow Crab by Pacific Cod")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
   theme(axis.text=element_text(size=12)) -> pcod
+ggsave("./Figs/cod_consumption.png")
 
+#Adult Indicators
+
+## Male SAM 
 eco_ind %>%
-  ## Invert Density
-  select(year, beninvert_cpue ) %>%
+  ggplot(aes(x = year, y = male_maturity))+
+  geom_point(size=3)+
+  geom_line() +
+  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_hline(aes(yintercept = mean(male_maturity, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(male_maturity, na.rm = TRUE) - sd(male_maturity, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(male_maturity, na.rm = TRUE) + sd(male_maturity, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = expression("Size at 50% maturity (CW, mm)"), x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Male Size at 50% Probability of Maturity")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> male_sam
+ggsave("./Figs/male_sam.png")
+
+## Female SAM 
+eco_ind %>%
+  ggplot(aes(x = year, y = female_maturity))+
+  geom_point(size=3)+
+  geom_line() +
+  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE) - sd(female_maturity, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE) + sd(female_maturity, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = expression("Mean size at maturation (CW, mm)"), x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Female Mean Size at Maturation")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> female_sam
+ggsave("./Figs/female_sam.png")
+
+## Invert Density
+eco_ind %>%
   ggplot(aes(x = year, y = beninvert_cpue ))+
   geom_point(size=3)+
   geom_line() +
   #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(beninvert_cpue , na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(beninvert_cpue , .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(beninvert_cpue , .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Benthic Invert density", x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE) - sd(beninvert_cpue, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE) + sd(beninvert_cpue, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Benthic Invert density (kg/km^2)", x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("Benthic Invert Density")+
+  ggtitle("Benthic Invertebrate Density")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> invert 
+ggsave("./Figs/benthic_invert.png")
 
-
+## Mature Male COD 
 eco_ind %>%
-  ##Cold Pool Extent
-  select(year, cpa) %>%
-  ggplot(aes(x = year, y = cpa))+
+  ggplot(aes(x = year, y = mature_male_centroid))+
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(cpa, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(cpa, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(cpa, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Cold Pool Extent (nmi)", x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  geom_hline(aes(yintercept = mean(mature_male_centroid, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(mature_male_centroid, na.rm = TRUE) - sd(mature_male_centroid, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(mature_male_centroid, na.rm = TRUE) + sd(mature_male_centroid, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = expression("Centroid " * degree * Latitude * ""), x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("EBS Cold Pool Extent")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> cp 
-
-eco_ind %>%
-  ## Immature Temperature of Occupancy   
-  select(year, temp_occ_imm) %>%
-  ggplot(aes(x = year, y = temp_occ_imm))+
-  geom_point(size=3)+
-  geom_line() +
-  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(temp_occ_imm, .10, na.rm=TRUE)), linetype = 3)+
-    annotate("rect", ymin=1.723647,ymax=Inf,xmin=-Inf,xmax=Inf, alpha=0.2, fill= "#DF5C47") +
-  geom_hline(aes(yintercept = quantile(temp_occ_imm, .90, na.rm=TRUE)), linetype = 3)+
-    annotate("rect", ymin=-Inf,ymax=-0.8497369 ,xmin=-Inf,xmax=Inf, alpha=0.2, fill= "#6B87B9") +
-  annotate("rect", xmin=2023.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "grey") +
-  labs(y = expression("Temperature of Occupancy ("*~degree*C*")"), x = "") +
-  theme_bw() +
-  xlim(1985, NA) +
-  scale_x_continuous(breaks = seq(1985, 2023, 5)) +
-  theme(panel.grid = element_blank()) +
-  #ggtitle("Immature Snow Crab Temperature of Occupancy")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) +
-  theme(axis.text=element_text(size=12))  -> occtemp
-
-
-eco_ind %>%
-  ## Mature Male COD  
-  select(year, mat_male_COD) %>%
-  ggplot(aes(x = year, y = mat_male_COD))+
-  geom_point(size=3)+
-  geom_line() +
-  geom_hline(aes(yintercept = mean(mat_male_COD, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(mat_male_COD, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(mat_male_COD, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2022.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = expression(atop("Center of", "Distribution "( degree~Latitude))) , x = "") +
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
-  ggtitle("Mature Male Center of Distribution")+
+  ggtitle("Mature Male Center of Abundance")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> COD
+ggsave("./Figs/male_cod.png")
 
+## Mature male Area Occupied
 eco_ind %>%
-  ## BCS Prevalance  
-  select(year, bcs_imm) %>%
-  ggplot(aes(x = year, y = bcs_imm))+
+  ggplot(aes(x = year, y =mature_male_d95))+
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(bcs_imm, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(bcs_imm, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(bcs_imm, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Disease Prevalence", x = "")+
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
-  theme_bw() +
-  theme(panel.grid = element_blank()) +
-  ggtitle("Immature Snow Crab Disease Prevalence")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> BCS
-
-eco_ind %>%
-  ## Mature male D95 
-  select(year,mat_male_d95) %>%
-  ggplot(aes(x = year, y =mat_male_d95))+
-  geom_point(size=3)+
-  geom_line() +
-  geom_hline(aes(yintercept = mean(mat_male_d95, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(mat_male_d95, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(mat_male_d95, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2021.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  geom_hline(aes(yintercept = mean(mature_male_d95, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(mature_male_d95, na.rm = TRUE) - sd(mature_male_d95, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(mature_male_d95, na.rm = TRUE) + sd(mature_male_d95, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = expression(atop("Mature Male", "Area Occupied (nmi)")), x = "")+
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
   ggtitle("Mature Male Snow Crab Area Occupied")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> maleD95
+ggsave("./Figs/male_d95.png")
 
+#Female Reproductive Failure
 eco_ind %>%
-  ## Sea Ice 
-  select(year,Jan_ice) %>%
-  ggplot(aes(x = year, y =Jan_ice))+
+  ggplot(aes(x = year, y = clutch_empty))+
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(Jan_ice, na.rm=TRUE)), linetype = 5)+
-  geom_hline(aes(yintercept = quantile(Jan_ice, .10, na.rm=TRUE)), linetype = 3)+
-  geom_hline(aes(yintercept = quantile(Jan_ice, .90, na.rm=TRUE)), linetype = 3)+
-  annotate("rect", xmin=2022.5 ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Sea Ice Concentration", x = "")+
-  scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  geom_hline(aes(yintercept = mean(clutch_empty, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(clutch_empty, na.rm = TRUE) - sd(clutch_empty, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(clutch_empty, na.rm = TRUE) + sd(clutch_empty, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "% empty clutches", x = "")+
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("Sea Ice Concentration")+
-  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> ice
+  ggtitle("Mature Female Reproductive Failure")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> clutch
+ggsave("./Figs/empty_clutch.png")
 
-#Size at 50% probability of maturation
-mat %>%
-  select(year, male_size_term_molt, female_mean_size_mat) %>%
-  pivot_longer(2:3, names_to="Sex", values_to="Size_Maturity") %>%
-  filter(Sex == "male_size_term_molt") %>%
-  ggplot(aes(x = year, y =Size_Maturity))+
-  geom_point(size=3) +
+#Operational Sex Ratio
+eco_ind %>%
+  ggplot(aes(x = year, y = op_sex_ratio))+
+  geom_point(size=3)+
   geom_line() +
-  geom_smooth()
-  geom_hline(aes(yintercept = mean(Size_Maturity, na.rm=TRUE)), linetype = 5)
-  
-  consump %>%
-    ggplot(aes(x = year, y =consumption))+
-    geom_point(size=3) +
-    geom_line() +
-    geom_hline(aes(yintercept = mean(consumption, na.rm=TRUE)), linetype = 5)
+  geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm = TRUE) - sd(op_sex_ratio, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm = TRUE) + sd(op_sex_ratio, na.rm = TRUE)), linetype = 3) +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Large male:mature female ratio", x = "")+
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Operational Sex Ratio")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> sex_ratio
+ggsave("./Figs/sex_ratio.png")  
 
-#**************************
-## Create combined plots -----
+
+
  
-#Create Figure for ESP doc - 6 timeseries per page 
-plot_grid(AO, cp, chla, invert, maleD95, occtemp,  
-          label_size = 10,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 6, align = "hv", axis = "l")  -> Fig1a
-
-## write plot
-ggsave(filename = "./Figs/Fig1a.png", device = "png", width = 6, height = 12, 
-       dpi = 300)
-
-plot_grid(COD, pcod, overlap, SAM, recruit, BCS,  
-          label_size = 10,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 7, align = "hv", axis = "l")  -> Fig1b
-
-## write plot
-ggsave(filename = "./Figs/Fig1b.png", device = "png", width = 6, height = 12, 
-       dpi = 300)
-
-#Other plots for presentation 
-
-plot_grid(cp, occtemp,   
-          label_size = 14,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 2, align = "hv", axis = "l", rel_heights = c(1, 1))
-
-#3 timeseries per page 
-plot_grid(AO, cp, chla,  
-           label_size = 12,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 3, align = "hv", axis = "l")  -> one
-## write plot
-ggsave(filename = "./Figs/one.png", device = "png", width = 6, height = 12, 
-       dpi = 300)
-
-plot_grid(invert, recruit, SAM,  
-          label_size = 10,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 3, align = "hv", axis = "l")  -> two
-## write plot
-ggsave(filename = "./Figs/two.png", device = "png", width = 6, height = 12, 
-       dpi = 300)
-
-plot_grid(pcod, overlap, BCS,  
-          label_size = 10,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 3, align = "hv", axis = "l")  ->three
-## write plot
-ggsave(filename = "./Figs/three.png", device = "png", width = 6, height = 12, 
-       dpi = 300)
-
-plot_grid(COD, maleD95, occtemp,  
-          label_size = 10,
-          hjust = -4.5, vjust = 2.5,
-          nrow = 3, align = "hv", axis = "l")  ->four
-## write plot
-ggsave(filename = "./Figs/four.png", device = "png", width = 6, height = 12, 
-       dpi = 300)
-
-
-
-
