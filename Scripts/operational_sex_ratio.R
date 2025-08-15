@@ -56,7 +56,8 @@ osr %>%
 #Write csv for indicator
 osr %>%
   select(YEAR, op_sex_ratio) %>%
-write.csv(file="./Output/operational_sex_ratio.csv")
+  arrange(YEAR) %>%
+write.csv(file="./Output/operational_sex_ratio.csv", row.names = F)
 
 
 

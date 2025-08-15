@@ -1,6 +1,9 @@
 #Create master csv of ecosystem indicators 
 # Assess collinearity b/w snow crab indicators for BAS
-#Create indicator timeseries plot 
+#Create indicator timeseries plot
+
+#2026 to do: add in trend analysis to communicate on report card plots as symbols
+  #analysis to detect trend (change in timeseries mean) or regime-like behavior
 
 
 # Erin Fedewa
@@ -39,14 +42,12 @@ invert %>%
   full_join(d95 %>%
               select(YEAR, mature_male_d95)) %>%
   full_join(bcd %>%
-              filter(REGION == "EBS") %>%
               select(YEAR, imm_prev_ebs) %>%
               rename(bcd_imm=imm_prev_ebs)) %>%
   full_join(cod %>%
               select(YEAR, mature_male_centroid)) %>%
   full_join(occ %>%
-              select(YEAR, TEMP_OCC) %>%
-              rename(temp_occ_imm = TEMP_OCC)) %>%
+              select(YEAR, temp_occ)) %>%
   full_join(ice %>%
               rename(YEAR=Year)) %>%
   full_join(clutch %>%
@@ -60,7 +61,7 @@ invert %>%
               rename(YEAR=year)) %>%
   full_join(condition %>%
               select(year,annual_mean) %>%
-              rename(YEAR=year)) %>%
+              rename(YEAR=year, energetic_condition = annual_mean)) %>%
   rename(year = YEAR) %>%
   arrange(year) -> eco_ind
 
@@ -90,12 +91,12 @@ eco_ind %>%
   theme(panel.grid = element_blank()) +
   ggtitle("Chlorophyll-a Biomass")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> chla
+ggsave("./Figs/chla.png")
 
 ## Arctic Oscillation
 eco_ind %>%
   ggplot(aes(x = year, y = Mean_AO ))+
-  geom_point(size=3)+
-  geom_line() +
+  geom_bar(stat = "identity") +
   geom_hline(aes(yintercept = mean(Mean_AO, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(Mean_AO, na.rm = TRUE) - sd(Mean_AO, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(Mean_AO, na.rm = TRUE) + sd(Mean_AO, na.rm = TRUE)), linetype = 3) +
@@ -115,6 +116,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = extent_coldpool))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(extent_coldpool, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(extent_coldpool, na.rm = TRUE) - sd(extent_coldpool, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(extent_coldpool, na.rm = TRUE) + sd(extent_coldpool, na.rm = TRUE)), linetype = 3) +
@@ -132,6 +134,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = extent_0C))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(extent_0C, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(extent_0C, na.rm = TRUE) - sd(extent_0C, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(extent_0C, na.rm = TRUE) + sd(extent_0C, na.rm = TRUE)), linetype = 3) +
@@ -146,12 +149,13 @@ ggsave("./Figs/0C_extent.png")
 
 ## Immature Temperature of Occupancy  
 eco_ind %>%
-  ggplot(aes(x = year, y = temp_occ_imm)) +
+  ggplot(aes(x = year, y = temp_occ)) +
   geom_point(size=3)+
   geom_line() +
-  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm = TRUE)), linetype = 5) +
-  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm = TRUE) - sd(temp_occ_imm, na.rm = TRUE)), linetype = 3) +
-  geom_hline(aes(yintercept = mean(temp_occ_imm, na.rm = TRUE) + sd(temp_occ_imm, na.rm = TRUE)), linetype = 3) +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
+  geom_hline(aes(yintercept = mean(temp_occ, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(temp_occ, na.rm = TRUE) - sd(temp_occ, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(temp_occ, na.rm = TRUE) + sd(temp_occ, na.rm = TRUE)), linetype = 3) +
   annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = expression("Temperature of Occupancy ("*~degree*C*")"), x = "") +
   theme_bw() +
@@ -167,12 +171,13 @@ eco_ind %>%
   ggplot(aes(x = year, y = ice_avg))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(ice_avg, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(ice_avg, na.rm = TRUE) - sd(ice_avg, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(ice_avg, na.rm = TRUE) + sd(ice_avg, na.rm = TRUE)), linetype = 3) +
-  geom_hline(yintercept = 0.15, color="#FF474C") +
+  geom_hline(yintercept = 15, color="#FF474C") +
   annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Sea Ice Concentration", x = "")+
+  labs(y = "Sea Ice Concentration (%)", x = "")+
   scale_x_continuous(breaks = seq(1975, current_year, 5)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
@@ -185,6 +190,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = bcd_imm))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(bcd_imm, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(bcd_imm, na.rm = TRUE) - sd(bcd_imm, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(bcd_imm, na.rm = TRUE) + sd(bcd_imm, na.rm = TRUE)), linetype = 3) +
@@ -199,11 +205,11 @@ ggsave("./Figs/bitter_crab.png")
 
 ## Energetic Condition
 eco_ind %>%
-  ggplot(aes(x = year, y = annual_mean))+
+  ggplot(aes(x = year, y = energetic_condition))+
   geom_bar(stat="identity") +
-  geom_hline(aes(yintercept = mean(annual_mean, na.rm = TRUE)), linetype = 5) +
-  geom_hline(aes(yintercept = mean(annual_mean, na.rm = TRUE) - sd(annual_mean, na.rm = TRUE)), linetype = 3) +
-  geom_hline(aes(yintercept = mean(annual_mean, na.rm = TRUE) + sd(annual_mean, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(energetic_condition, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(energetic_condition, na.rm = TRUE) - sd(energetic_condition, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(energetic_condition, na.rm = TRUE) + sd(energetic_condition, na.rm = TRUE)), linetype = 3) +
   geom_hline(yintercept = 22.6, color="#FF474C") +
   annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = "Energetic Condition (% DWT)", x = "")+
@@ -219,7 +225,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = consumption))+
   geom_point(size=3)+
   geom_line() +
-  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(consumption, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(consumption, na.rm = TRUE) - sd(consumption, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(consumption, na.rm = TRUE) + sd(consumption, na.rm = TRUE)), linetype = 3) +
@@ -240,7 +246,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = male_maturity))+
   geom_point(size=3)+
   geom_line() +
-  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(male_maturity, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(male_maturity, na.rm = TRUE) - sd(male_maturity, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(male_maturity, na.rm = TRUE) + sd(male_maturity, na.rm = TRUE)), linetype = 3) +
@@ -258,7 +264,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = female_maturity))+
   geom_point(size=3)+
   geom_line() +
-  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE) - sd(female_maturity, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(female_maturity, na.rm = TRUE) + sd(female_maturity, na.rm = TRUE)), linetype = 3) +
@@ -276,7 +282,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = beninvert_cpue ))+
   geom_point(size=3)+
   geom_line() +
-  #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE) - sd(beninvert_cpue, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE) + sd(beninvert_cpue, na.rm = TRUE)), linetype = 3) +
@@ -294,6 +300,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = mature_male_centroid))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(mature_male_centroid, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(mature_male_centroid, na.rm = TRUE) - sd(mature_male_centroid, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(mature_male_centroid, na.rm = TRUE) + sd(mature_male_centroid, na.rm = TRUE)), linetype = 3) +
@@ -311,6 +318,7 @@ eco_ind %>%
   ggplot(aes(x = year, y =mature_male_d95))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(mature_male_d95, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(mature_male_d95, na.rm = TRUE) - sd(mature_male_d95, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(mature_male_d95, na.rm = TRUE) + sd(mature_male_d95, na.rm = TRUE)), linetype = 3) +
@@ -328,6 +336,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = clutch_empty))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(clutch_empty, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(clutch_empty, na.rm = TRUE) - sd(clutch_empty, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(clutch_empty, na.rm = TRUE) + sd(clutch_empty, na.rm = TRUE)), linetype = 3) +
@@ -345,6 +354,7 @@ eco_ind %>%
   ggplot(aes(x = year, y = op_sex_ratio))+
   geom_point(size=3)+
   geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
   geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm = TRUE)), linetype = 5) +
   geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm = TRUE) - sd(op_sex_ratio, na.rm = TRUE)), linetype = 3) +
   geom_hline(aes(yintercept = mean(op_sex_ratio, na.rm = TRUE) + sd(op_sex_ratio, na.rm = TRUE)), linetype = 3) +

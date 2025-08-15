@@ -121,7 +121,7 @@ missing <- data.frame(YEAR = 2020)
            population_d95=population) %>%
     bind_rows(missing) %>%
     arrange(YEAR) %>%
-  write.csv(file="./Output/D95_output.csv")
+  write.csv(file="./Output/D95_output.csv", row.names = F)
   
 
 

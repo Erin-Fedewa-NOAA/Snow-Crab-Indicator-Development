@@ -44,7 +44,7 @@ recent_dat <- tidync("./Data/ERA5_ice_2000_2025.nc") %>%
 
 rbind(early_dat, recent_dat) %>%
   group_by(Year) %>%
-  summarize(ice_avg = mean(siconc,  na.rm=T)) -> ice_extent
+  summarize(ice_avg = mean(siconc,  na.rm=T)*100) -> ice_extent
 
 #Plot timeseries
 ice_extent %>%
@@ -52,7 +52,7 @@ ice_extent %>%
   geom_point() +
   geom_line() +
   geom_hline(aes(yintercept = mean(ice_avg, na.rm=TRUE)), linetype = 5) +
-  geom_hline(yintercept = 0.15, color= "red") + #ice-free threshold
+  geom_hline(yintercept = 15, color= "red") + #ice-free threshold
   theme_bw()
 #Less than 15% ice cover in Bering Sea in spring 2018-2019- below the threshold
   #for ice covered area

@@ -29,7 +29,7 @@ snow$specimen %>%
 cpue %>%
   left_join(., snow$haul %>% select(YEAR, GEAR_TEMPERATURE, STATION_ID)) %>%
   group_by(YEAR) %>% 
-  summarise(TEMP_OCC = weighted.mean(GEAR_TEMPERATURE, w = cpue, na.rm = T)) %>%
+  summarise(temp_occ = weighted.mean(GEAR_TEMPERATURE, w = cpue, na.rm = T)) %>%
   print(n=50) -> temp_occ
   
 #plot
@@ -39,8 +39,12 @@ temp_occ %>%
   geom_line() +
   theme_bw()
 
-#Write output for Temp Occupancy indicator  
+#Write output for Temp Occupancy indicator 
+missing <- data.frame(YEAR = 2020)
+
 temp_occ %>%
+  bind_rows(missing) %>%
+  arrange(YEAR) %>%
   write.csv(file="./Output/TempOcc_output.csv", row.names = F)
 
 
