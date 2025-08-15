@@ -80,6 +80,10 @@ ggplot(ne_countries(scale = "medium", returnclass = "sf")) +
 #Write csv for stations in 50th percentile of avg CPUE  
 write.csv(cpue50_core, file="./Output/snow_core_area.csv", row.names = FALSE)
 
+#Pull stations for filtering in indicator script
+snow_core <- cpue50_core %>%
+                pull(STATION_ID)
+
 
 
 

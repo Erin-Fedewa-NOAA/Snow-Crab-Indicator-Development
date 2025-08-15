@@ -23,6 +23,7 @@ clutch <- read_csv("./Output/reproductive_potential.csv")
 ratio <- read_csv("./Output/operational_sex_ratio.csv")
 mat <- read_csv("./Output/snow_SAM.csv")
 consump <- read_csv("./Data/cod_consumption.csv")
+condition <- read_csv("./Data/opilio_condition.csv")
 
 # Set years for plotting
 current_year <- 2025
@@ -56,6 +57,9 @@ invert %>%
   full_join(mat %>%
               select(YEAR, male_maturity, female_maturity)) %>%
   full_join(consump %>%
+              rename(YEAR=year)) %>%
+  full_join(condition %>%
+              select(year,annual_mean) %>%
               rename(YEAR=year)) %>%
   rename(year = YEAR) %>%
   arrange(year) -> eco_ind
@@ -194,10 +198,21 @@ eco_ind %>%
 ggsave("./Figs/bitter_crab.png")
 
 ## Energetic Condition
-
-
-
-
+eco_ind %>%
+  ggplot(aes(x = year, y = annual_mean))+
+  geom_bar(stat="identity") +
+  geom_hline(aes(yintercept = mean(annual_mean, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(annual_mean, na.rm = TRUE) - sd(annual_mean, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(annual_mean, na.rm = TRUE) + sd(annual_mean, na.rm = TRUE)), linetype = 3) +
+  geom_hline(yintercept = 22.6, color="#FF474C") +
+  annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
+  labs(y = "Energetic Condition (% DWT)", x = "")+
+  scale_x_continuous(limits=c(2018, current_year + .5)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Juvenile Snow Crab Energetic Condition")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> condition
+ggsave("./Figs/energetic_condition.png")
 
 ##Pcod_consumption
 eco_ind %>%

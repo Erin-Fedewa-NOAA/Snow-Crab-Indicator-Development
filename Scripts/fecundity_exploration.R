@@ -10,6 +10,10 @@ clutch <- read.csv("./Output/clutch_full.csv")
 male_mat <- read.csv("./Data/Indicator contributions/opilio_maturation_size.csv")
 
 #--------------------------------------------------------------
+
+#within each year, calculate abun
+
+
 #Calculate abundance timeseries of large males (>= 90mm CW)
 ebs_haul <- read.csv("./data/crabhaul_opilio.csv")
 ebs_strata <- read.csv("./data/crabstrata_opilio.csv")
@@ -95,13 +99,22 @@ dat %>%
 #run gams to look at clutch fullness vrs. male shell condition, male 
   #competitive index, 
 
+#try this now using clutch failure- maybe this is a more sensitive metric for 
+  #sperm limitation? 
+#also link clutch failure to recruitment lagged?
 
 
+#need to think about shell condition of females or no?
+
+#also look at abundance of mature females relative to large male SAM- less females 
+  #would encourage smaller sizes at maturity if lots of females? or vice versa 
 
 #Clutch fullness is a very coarse proxy for reproductive potential, and 
   #observations of decline in prop of full clutches is rare in the timeseries
   #trends really not consistent with male/sperm limitation like we see in 
   #eastern Canadian snow crab stocks 
+
+#can we also look at lagged temp (moving window) SAM relationships? 
 
 
 
