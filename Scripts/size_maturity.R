@@ -64,4 +64,5 @@ male_mat %>%
   rename(male_maturity = MAT_SIZE,
          male_std_err = STD_ERR) %>%
   left_join(female_mean_size) %>%
+  arrange(YEAR) %>%
   write_csv("./Output/snow_SAM.csv")
