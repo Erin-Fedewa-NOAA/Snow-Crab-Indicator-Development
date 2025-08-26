@@ -13,6 +13,7 @@ library(tidyverse)
 library(corrplot)
 library(patchwork)
 library(mgcv)
+library(scales)
 
 #Ecosystem data to combine
 invert <- read_csv("./Output/benthic_invert.csv")
@@ -27,6 +28,7 @@ ratio <- read_csv("./Output/operational_sex_ratio.csv")
 mat <- read_csv("./Output/snow_SAM.csv")
 consump <- read_csv("./Data/cod_consumption.csv")
 condition <- read_csv("./Data/opilio_condition.csv")
+chla <- read_csv("./Data/Contributor Indicators/Chlorophylla_Biomass.csv")
 
 # Set years for plotting
 current_year <- 2025
@@ -62,8 +64,14 @@ invert %>%
   full_join(condition %>%
               select(year,annual_mean) %>%
               rename(YEAR=year, energetic_condition = annual_mean)) %>%
+  full_join(chla) %>%
   rename(year = YEAR) %>%
   arrange(year) -> eco_ind
+
+#subset to only include ESP indicators and write csv
+eco_ind %>%
+  select(-extent_coldpool) %>%
+  write.csv("./Output/snow_esp_indicator_timeseries.csv", row.names = F)
 
 
 #Assess collinearity b/w indicators 
@@ -77,19 +85,19 @@ eco_ind %>%
 
 ## Chl-A 
 eco_ind %>%
-  ggplot(aes(x = year, y = Chl_a))+
+  ggplot(aes(x = year, y = chla))+
   geom_point(size=3)+
   geom_line() +
   #geom_smooth(method = gam, formula = y~s(x, bs = "cs")) +
-  geom_hline(aes(yintercept = mean(Chl_a, na.rm = TRUE)), linetype = 5) +
-  geom_hline(aes(yintercept = mean(Chl_a, na.rm = TRUE) - sd(Chl_a, na.rm = TRUE)), linetype = 3) +
-  geom_hline(aes(yintercept = mean(Chl_a, na.rm = TRUE) + sd(Chl_a, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(chla, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(chla, na.rm = TRUE) - sd(chla, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(chla, na.rm = TRUE) + sd(chla, na.rm = TRUE)), linetype = 3) +
   annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
-  labs(y = "Chlorophyll-a (ug/l)", x = "")+
-  #scale_x_continuous(breaks = seq(1980, 2022, 5)) +
+  labs(y = "Chlorophyll a (ug/l)", x = "")+
+  scale_x_continuous(breaks = seq(1998,current_year, 5), limits= c(1988, current_year)) +
   theme_bw() +
   theme(panel.grid = element_blank()) +
-  ggtitle("Chlorophyll-a Biomass")+
+  ggtitle("Chlorophyll a Biomass")+
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> chla
 ggsave("./Figs/chla.png")
 
@@ -367,6 +375,115 @@ eco_ind %>%
   theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) -> sex_ratio
 ggsave("./Figs/sex_ratio.png")  
 
+###############################################################
+#Socioeconomic Indicators
 
-
+centroid <- read_csv("./Data/Contributor Indicators/Annual_Snow_Crab_Center_Distribution_EBS_Fishery_2025.csv")
+cpue <- read_csv("./Data/Contributor Indicators/Annual_Snow_Crab_CPUE_Fishery_2025_calendar_year.csv")
+potlift <- read_csv("./Data/Contributor Indicators/Annual_Snow_Crab_Potlift_Fishery_2025_calendar_year.csv")
  
+#centroid of the fishery
+centroid %>%
+  ggplot(aes(x = YEAR, y = centroid_fishery))+
+  geom_point(size=3)+
+  geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
+  geom_hline(aes(yintercept = mean(centroid_fishery, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(centroid_fishery, na.rm = TRUE) - sd(centroid_fishery, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(centroid_fishery, na.rm = TRUE) + sd(centroid_fishery, na.rm = TRUE)), linetype = 3) +
+  labs(y = expression("Centroid " * degree * Latitude * ""), x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Snow Crab Fishery Centroid")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) 
+ggsave("./Figs/fishery_centroid.png")
+
+#Fishery CPUE
+cpue %>%
+  ggplot(aes(x = YEAR, y = cpue_fishery))+
+  geom_point(size=3)+
+  geom_line() +
+  #geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
+  geom_hline(aes(yintercept = mean(cpue_fishery, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(cpue_fishery, na.rm = TRUE) - sd(cpue_fishery, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(cpue_fishery, na.rm = TRUE) + sd(cpue_fishery, na.rm = TRUE)), linetype = 3) +
+  labs(y = "CPUE", x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Snow Crab Fishery CPUE")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) 
+ggsave("./Figs/fishery_cpue.png")
+
+#No of Potlifts
+potlift %>%
+  ggplot(aes(x = YEAR, y = potlift))+
+  geom_point(size=3)+
+  geom_line() +
+  geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
+  geom_hline(aes(yintercept = mean(potlift, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(potlift, na.rm = TRUE) - sd(potlift, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(potlift, na.rm = TRUE) + sd(potlift, na.rm = TRUE)), linetype = 3) +
+  labs(y = "Number of Potlifts", x = "") +
+  scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
+  theme_bw() +
+  theme(panel.grid = element_blank()) +
+  ggtitle("Snow Crab Fishery Potlifts")+
+  theme(plot.title = element_text(lineheight=.8, face="bold", hjust=0.5)) 
+ggsave("./Figs/fishery_potlifts.png")
+
+#skipper survey plots
+skipper <- read_csv("./Data/Contributor Indicators/Skipper Survey Q1_Q3.csv")
+
+#question 1: perceived abundance
+color_palette <- c("red" = "red", "blue" = "blue", "grey" = "grey")
+
+skipper %>% 
+  filter(stock == "snow",
+         question == "perceived_abundance") %>%
+  mutate(bar_color = case_when(response %in% c("10_25_decrease", "25_plus_decrease") ~ "red",
+                               response %in% c("no_change") ~ "grey",
+                               response %in% c("10_25_increase","25_plus_increase") ~ "blue")) %>%
+  mutate(response = factor(response, 
+                           levels = c("25_plus_decrease", "10_25_decrease",
+                                      "no_change","10_25_increase",
+                                      "25_plus_increase"))) %>%
+  ggplot(aes(number_responses, response, fill = bar_color)) +
+  geom_bar(stat = "identity", alpha = .8) +
+  scale_fill_manual(values = color_palette) +
+  scale_y_discrete(labels = c("25_plus_decrease" = "25%+ Decrease", "10_25_decrease" = "10-25% Decrease", 
+                              "no_change" = "No Change",
+                              "10_25_increase" = "10-25% Increase", "25_plus_increase" = "25%+ Increase")) +
+  labs(x = "Number of Responses", y = "") +
+  theme_bw() +
+  theme(legend.position = "none")
+
+#question 2: changes in fishing behavior
+skipper %>% 
+  filter(stock == "snow",
+         question == "fishing_practice") %>%
+  ggplot(aes(number_responses, response)) +
+  geom_bar(stat = "identity", alpha = .8, fill = "grey") +
+  scale_y_discrete(labels = c("no_change" = "No Change", "move_location" = "Moved Fishing Locations", 
+                              "longer_soak" = "Longer Soak Times",
+                              "move_deeper" = "Fished Deeper")) +
+  labs(x = "Number of Responses", y = "") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_x_continuous(labels = label_number(accuracy = 1))
+
+#question 3: motivation for changes in fishing behavior
+skipper %>% 
+  filter(stock == "snow",
+         question == "reason_change") %>%
+  ggplot(aes(number_responses, response)) +
+  geom_bar(stat = "identity", alpha = .8, fill = "grey") +
+  scale_y_discrete(labels = c("no_change" = "No Change", "low_cpue" = "Low CPUE", 
+                              "high_sorting" = "Too Much Sorting",
+                              "trawlers" = "Trawlers in the Area",
+                              "undesirable_crab" = "Undesirable Crab")) +
+  labs(x = "Number of Responses", y = "") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_x_continuous(labels = label_number(accuracy = 1))
