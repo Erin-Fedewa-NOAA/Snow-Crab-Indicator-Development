@@ -72,7 +72,7 @@ recruit_abun %>%
 #Assess collinearity b/w indicators 
 model_dat %>% 
   select(-year) %>%
-  cor(use = "complete.obs") %>%
+  cor(use = "pairwise.complete.obs") %>%
   corrplot(method="color")
 #Some highly correlated covariates- but we'll wait to reassess until we lag since
   #some indicators are representing different mechanisms
@@ -127,12 +127,12 @@ dat_lagged %>%
 #Assess collinearity b/w lagged indicators 
 dat_lagged %>% 
   select(-year) %>%
-  cor(use = "complete.obs") %>%
+  cor(use = "pairwise.complete.obs") %>%
   corrplot(method="number")
 #let's pull cold pool since temp occupied is a more direct metric
 #interesting on consumption/bcd- both probably increase with increased 
-#abundance. We'll stick with visual prev since pcod consumption is also 
-#highly correlated with cold pool, sea ice and temperature occuped
+#abundance. We'll stick with cod consumption since it's likely a more 
+  #direct metric
 
 #Lets also look at distributions of potentially problematic covariates
 hist(dat_lagged$abundance)
@@ -145,7 +145,7 @@ hist(dat_lagged$consump_lag)
 dat_bas <- dat_lagged %>% 
   mutate(ln_rec=log(abundance)) %>%
   #dropping highly correlated indicators + chla
-  select(-consump_lag, -clutch_lag, -cp_lag, -chla_lag)
+  select(-bcd_lag, -clutch_lag, -cp_lag, -chla_lag)
 
 hist(dat_bas$ln_rec)
 
@@ -168,9 +168,9 @@ ggplot(covar.list, aes(x=value, fill=type)) +
 # Z-score Predictors that are bounded at zero 
 dat_bas %>%
   mutate(across(c(3:7), ~ (.-mean(.,na.rm=T))/sd(.,na.rm=T), .names = "z_{.col}")) %>%
-  select(-ao_lag, -ice_lag,-bcd_lag,-invert_lag,-tempocc_lag,-abundance) %>%
+  select(-ao_lag, -ice_lag,-consump_lag,-invert_lag,-tempocc_lag,-abundance) %>%
   rename("Arctic Oscillation" = z_ao_lag, "Sea Ice Extent" = z_ice_lag, 
-         "Disease Prevalence" = z_bcd_lag, "Benthic Prey" = z_invert_lag, 
+         "Cod Consumption" = z_consump_lag, "Benthic Prey" = z_invert_lag, 
          "Snow Crab Temperature Occupied" = z_tempocc_lag) -> dat_zscore
 #When predictors are z-scored, the regression coefficients represent the change in the outcome variable
   #(in standard deviations) for a one-standard-deviation change in the predictor. 
@@ -182,7 +182,7 @@ z.ts.plot <- dat_zscore %>%
   pivot_longer(c(2:(ncol(dat_zscore)-1)), names_to = "indicator", values_to = "value") %>%
   mutate(indicator = factor(indicator, 
                             levels = c("Arctic Oscillation", "Sea Ice Extent",
-                                       "Disease Prevalence","Benthic Prey",
+                                       "Cod Consumption","Benthic Prey",
                                        "Snow Crab Temperature Occupied")))
 
 
@@ -274,7 +274,6 @@ legend('bottom', legend=c("Observed","Predicted"), lty=1, col=c(rgb(1,0,0,alpha=
        bg="white")
 
 dev.off()
-
 
 ## Plot inclusion probabilities ------------------------------------------------
 inc.probs <- summary(bas.lm)[2:ncol(dat_fit), 1]
