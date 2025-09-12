@@ -16,7 +16,7 @@ library(mgcv)
 library(scales)
 
 #Ecosystem data to combine
-invert <- read_csv("./Output/benthic_invert.csv")
+invert <- read_csv("./Output/invert_density.csv")
 env <- read_csv("./Output/environmental_timeseries.csv")
 d95 <- read_csv("./Output/D95_output.csv")
 bcd <- read_csv("./Output/bcd_prevalence.csv")
@@ -37,8 +37,6 @@ current_year <- 2025
 
 # combine indices and save output
 invert %>%
-  select(YEAR, Total_Benthic) %>%
-  rename(beninvert_cpue = Total_Benthic) %>%
   full_join(env %>%
               select(YEAR, extent_coldpool, extent_0C, Mean_AO)) %>%
   full_join(d95 %>%
@@ -287,13 +285,13 @@ ggsave("./Figs/female_sam.png")
 
 ## Invert Density
 eco_ind %>%
-  ggplot(aes(x = year, y = beninvert_cpue ))+
+  ggplot(aes(x = year, y = total_invert ))+
   geom_point(size=3)+
   geom_line() +
   geom_smooth(method = "lm", color = "grey40", fill="grey80") + 
-  geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE)), linetype = 5) +
-  geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE) - sd(beninvert_cpue, na.rm = TRUE)), linetype = 3) +
-  geom_hline(aes(yintercept = mean(beninvert_cpue, na.rm = TRUE) + sd(beninvert_cpue, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(total_invert, na.rm = TRUE)), linetype = 5) +
+  geom_hline(aes(yintercept = mean(total_invert, na.rm = TRUE) - sd(total_invert, na.rm = TRUE)), linetype = 3) +
+  geom_hline(aes(yintercept = mean(total_invert, na.rm = TRUE) + sd(total_invert, na.rm = TRUE)), linetype = 3) +
   annotate("rect", xmin=(current_year - 0.5) ,xmax=Inf ,ymin=-Inf , ymax=Inf, alpha=0.2, fill= "green") +
   labs(y = "Benthic Invert density (kg/km^2)", x = "") +
   scale_x_continuous(breaks = seq(1988, current_year, 5), limits=c(1988,current_year)) +
