@@ -152,12 +152,20 @@ dat %>%
   geom_text(hjust=0, vjust=0)
 
 #abundance of large males vrs. 50% size at terminal molt 
-mod <- gam(male_maturity ~ s(large_male_abun, k = 5), 
+mod <- gam(male_maturity ~ s(large_male_abun, k = 5) + s(YEAR, k = 5), 
                 data = dat)
 
 acf(resid(mod), main="acf(resid(m1))") #not terrible, but we should include AR1 term
 summary(mod) 
 gam.check(mod) 
+
+#trend in SAM over time? 
+mod2 <- gam(male_maturity ~ s(YEAR, k = 5), 
+           data = dat)
+
+acf(resid(mod2), main="acf(resid(m1))") #not terrible, but we should include AR1 term
+summary(mod2) 
+gam.check(mod2) 
 
 dat %>%
   ggplot(aes(x = large_male_abun, y = male_maturity, label = YEAR)) +
