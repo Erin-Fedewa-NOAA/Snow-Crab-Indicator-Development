@@ -1,5 +1,5 @@
 #Create master csv of ecosystem indicators 
-# Assess collinearity b/w snow crab indicators for BAS
+# Assess collinearity b/w snow crab indicators 
 #Create indicator timeseries plot
 
 #2026 to do: add in trend analysis to communicate on report card plots as symbols
@@ -49,6 +49,7 @@ invert %>%
   full_join(occ %>%
               select(YEAR, temp_occ)) %>%
   full_join(ice %>%
+              select(year, Mar_Apr_ice_EBS_NBS) %>%
               rename(YEAR=Year)) %>%
   full_join(clutch %>%
               select(YEAR, prop_empty) %>%
