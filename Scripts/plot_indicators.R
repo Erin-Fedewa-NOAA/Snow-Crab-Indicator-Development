@@ -50,7 +50,7 @@ invert %>%
               select(YEAR, temp_occ)) %>%
   full_join(ice %>%
               select(year, Mar_Apr_ice_EBS_NBS) %>%
-              rename(YEAR=Year)) %>%
+              rename(YEAR=year)) %>%
   full_join(clutch %>%
               select(YEAR, prop_empty) %>%
               rename(clutch_empty=prop_empty)) %>%

@@ -13,7 +13,6 @@ library(lubridate)
 library(sf)
 library(httr)
 library(akgfmaps)
-library(rnaturalearth)
 
 ##########################################################
 
@@ -70,12 +69,15 @@ cpue50_core <- cpue %>%
   left_join(., stations %>% select(STATION_ID, LATITUDE, LONGITUDE))
 
 #Quick plot for visual check 
-ggplot(ne_countries(scale = "medium", returnclass = "sf")) +
-  geom_sf() +
-  geom_point(data = cpue50_core, aes(x = LONGITUDE, y = LATITUDE), size = 2, 
-             shape = 23, fill = "darkred") +
+world <- st_as_sf(map("world", plot = FALSE, fill = TRUE))
+
+ggplot(world) +
+  geom_sf(fill = "grey90", color = "grey50") +
+  geom_point(data = cpue50_core,
+             aes(x = LONGITUDE, y = LATITUDE),
+             size = 2, shape = 23, fill = "darkred") +
   coord_sf(xlim = c(-180, -159), ylim = c(54, 64), expand = FALSE) +
-  theme_bw() #looks about right! 
+  theme_bw()
 
 #Write csv for stations in 50th percentile of avg CPUE  
 write.csv(cpue50_core, file="./Output/snow_core_area.csv", row.names = FALSE)
