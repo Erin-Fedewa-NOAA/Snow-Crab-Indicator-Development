@@ -96,7 +96,7 @@ recruit_abun %>%
   rename_with(tolower) -> snow_dat
 
 #-----------------------------------------#
-# data wrangling ----
+#Data wrangling ----
 #-----------------------------------------#
 
 #refine indicators to those included in recruitment DAG
@@ -364,19 +364,84 @@ AIC(ar1_recruit_fit)
 #But how to use AIC/the same dataset to test simpler models/different hypotheses?
 
 #----------------------------------#
-# Causal Models ----
+#Fit Causal Models ----
 #----------------------------------#
 
+#### Early Juvenile Model ####
+
+#subset data
+data_early_juv <- scaled_dat %>%
+  select(-year, -log_recruit_abun, -log_invert, -temp_occ) %>%
+  ts()
+
+earlyjuv_sem <- "
+  #temporal structure
+   log_consumption -> log_consumption, 1, ar_consump
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   mean_ao -> mean_ao, 1, ar_ao
+   sea_ice -> sea_ice, 1, ar_ice
+   
+  #causal pathways
+  log_consumption -> log_prerecruit_abun, 2, codtorecruit
+  mean_ao -> log_prerecruit_abun, 4, aotorecruit
+  sea_ice -> log_prerecruit_abun, 2, icetorecruit"
+
+#build model without running it
+fit_build_earlyjuv <- dsem(sem = earlyjuv_sem, tsdata = data_early_juv,
+                      family = family,
+                      estimate_delta0 = TRUE,
+                      control = dsem_control(
+                        run_model = FALSE))
+
+#this is a new error...
+length(map$fit_build_earlyjuv)
+
+pars_early <- fit_build_earlyjuv$tmb_inputs$parameters
+map_early  <- fit_build_earlyjuv$tmb_inputs$map
+
+# fix observation error at 0.1
+pars_early$lnsigma_j <- rep(log(0.1), ncol(data))
+
+# prevent estimation of SD
+map_early$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+early_juv_fit <- dsem(sem=earlyjuv_sem, tsdata=data_early_juv, 
+                        family=family,
+                        estimate_delta0=TRUE,
+                        control=dsem_control(parameters = pars_early,
+                                             map = map_early,
+                                             quiet = TRUE,
+                                             getsd = TRUE))
+
+summary(early_juv_fit)
 
 
+#### Late Juvenile Model ####
 
+#subset data
+data_late_juv <- scaled_dat %>%
+  select(-year, -mean_ao, -sea_ice, -log_consumption) %>%
+  ts()
 
+latejuv_sem <- "
+  #temporal structure
+   log_recruit_abun -> log_recruit_abun, 1, ar_rec
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   temp_occ -> temp_occ, 1, ar_temp
+   log_invert -> log_invert, 1, ar_invert
+   
+  #causal pathways
+  log_invert -> log_recruit_abun, 1, inverttorecruit
+  log_prerecruit_abun -> log_recruit_abun, 1, pretorecruit
+  temp_occ -> log_recruit_abun, 1, temptorecruit"
 
-
-
-
-
-
+#build model without running it
+fit_build_latejuv <- dsem(sem = latejuv_sem, tsdata = data_late_juv,
+                           family = family,
+                           estimate_delta0 = TRUE,
+                           control = dsem_control(
+                             run_model = FALSE))
 
 
 
@@ -388,6 +453,7 @@ AIC(ar1_recruit_fit)
 AIC(iid_fit)
 AIC(ar1_fit)
 AIC(ar1_recruit_fit)
-AIC(full_dsem_fit)
+AIC(early_juv_fit)
+AIC(late_juv_fit)
 
 delta_AIC <- AIC_values - min(AIC_values)
