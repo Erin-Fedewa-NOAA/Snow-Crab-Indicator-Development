@@ -3,6 +3,9 @@
 
 #Author: E. Fedewa
 
+#Follow ups for May CPT: add in 2025 consumption estimate, re-run with Emily
+  #immature index, diagnostics, d-sep tests
+
 #load
 library(tidyverse)
 library(dsem)
@@ -18,94 +21,37 @@ library(knitr)
 library(kableExtra)
 library(phylopath)
 library(broom)
+library(gt)
 
 #Read in indicator data
 indicators <- read.csv("./Output/snow_esp_indicator_timeseries.csv") %>%
                 rename(sea_ice = Mar_Apr_ice_EBS_NBS)
 
-## Read in setup for crab data
-source("./Scripts/get_crab_data.R")
+#read in recruitment response 
+recruit_abun <- read.csv("./Output/recruit_abundance.csv")
 
 # Set years
+current_year = 2025
 years <- 1988:current_year
-start_year = 1988
-
-#-----------------------------------------#
-# Recruitment response ----
-#-----------------------------------------#
-
-#calculate recruit abundance as our response: 
-  #i.e. survey-derived abundance of 65-80mm CW male snow crab
-  #(~6.7-7.7 years post settlement, 1-2 molts from terminal)
-
-recruit_abun <- calc_bioabund(crab_data = snow,
-                              species = "SNOW",
-                              region = "EBS",
-                              years = years,
-                              sex = "male",
-                              size_min = 65,
-                              size_max = 80,
-                              shell_condition = "new_hardshell") %>%
-  select(YEAR, ABUNDANCE) %>%
-  right_join(., expand.grid(YEAR = years)) %>%
-  arrange(YEAR) %>%
-  mutate(recruit_abun = as.numeric(ABUNDANCE/1e6)) %>%
-  rename_with(tolower) %>%
-  select(-abundance)
-
-#Plot
-recruit_abun %>%
-  ggplot(aes(x = year, y = recruit_abun)) +
-  geom_point() +
-  geom_line()+
-  labs(y = "Number of crab (millions)", x = "") +
-  theme_bw()
-
-#calculate pre-recruit abundance as intermediate covariate: 
-  #i.e. survey-derived abundance of 40-55mm CW male snow crab
-  #(~4-5 years post settlement)
-
-prerecruit_abun <- calc_bioabund(crab_data = snow,
-                              species = "SNOW",
-                              region = "EBS",
-                              years = years,
-                              sex = "male",
-                              size_min = 40,
-                              size_max = 55,
-                              shell_condition = "new_hardshell") %>%
-  select(YEAR, ABUNDANCE) %>%
-  right_join(., expand.grid(YEAR = years)) %>%
-  arrange(YEAR) %>%
-  mutate(prerecruit_abun = as.numeric(ABUNDANCE/1e6)) %>%
-  rename_with(tolower) %>%
-  select(-abundance)
-
-#Plot
-prerecruit_abun %>%
-  ggplot(aes(x = year, y = prerecruit_abun)) +
-  geom_point() +
-  geom_line()+
-  labs(y = "Number of crab (millions)", x = "") +
-  theme_bw()
-
-#join indicator and responses
-recruit_abun %>%
-  full_join(prerecruit_abun) %>%
-  full_join(indicators) %>%
-  arrange(year) %>%
-  rename_with(tolower) -> snow_dat
 
 #-----------------------------------------#
 #Data wrangling ----
 #-----------------------------------------#
+#join indicator and responses
+recruit_abun %>%
+  full_join(recruit_abun) %>%
+  full_join(indicators) %>%
+  arrange(year) %>%
+  rename_with(tolower) -> snow_dat
 
 #refine indicators to those included in recruitment DAG
   #follow up on this list before CPT! 
 model_dat <- snow_dat %>%
   rename_with(tolower) %>%
-  filter(year >= start_year) %>% 
+  mutate(across(everything(), as.numeric)) %>%
   select(year, total_invert, temp_occ, recruit_abun, prerecruit_abun,
-         mean_ao, sea_ice, consumption)
+         mean_ao, sea_ice, consumption, extent_0c, bcd_imm,
+         energetic_condition, chla)
 
 #plot
 model_dat %>%
@@ -134,9 +80,8 @@ plot_histo(model_dat %>% select(-year))
 scaled_dat <- model_dat %>%
   mutate(log_invert = log(total_invert),
          log_recruit_abun = log(recruit_abun),
-         log_prerecruit_abun = log(prerecruit_abun),
-         log_consumption = log(consumption)) %>%
-  select(-total_invert, -recruit_abun, -prerecruit_abun, -consumption)
+         log_prerecruit_abun = log(prerecruit_abun)) %>%
+  select(-total_invert, -recruit_abun, -prerecruit_abun) %>%
   mutate(across(-year, ~ as.numeric(scale(.))))
   
 #check distributions now
@@ -147,8 +92,8 @@ scaled_dat %>%
   select(-year) %>%
   cor(use = "pairwise.complete.obs") %>%
   corrplot(method="number")
-#We're invoking different mechanisms/lag structures for sea ice and temperature 
-  #occupied, but as expected they are highly correlated
+#We're invoking different mechanisms/lag structures for some of these variables
+  #that are highly correlated
 
 #plot all standardized/transformed variables
 scaled_dat %>%
@@ -229,17 +174,20 @@ data <- scaled_dat %>%
   select(-year) %>%
   ts()
 
+#specify distribution for measurement error
 family <- rep("normal", ncol(data))
 
 #------------------------------------------------#
-# Fit Base IID and AR1 recruitment models ----
+# Fit Base IID recruitment model ----
 #------------------------------------------------#
-
-#### IID Model ####
 
 iid_sem <- "
   #temporal structure
-   log_consumption -> log_consumption, 1, ar_consump
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
    log_invert -> log_invert, 1, ar_invert
    log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
    mean_ao -> mean_ao, 1, ar_ao
@@ -251,12 +199,12 @@ iid_sem <- "
 #(needed so we can modify TMB inputs)
 fit_build_iid <- dsem(sem = iid_sem, tsdata = data,
                         family = family,
-                        estimate_delta0 = TRUE,
+                        estimate_delta0 = FALSE,
                         control = dsem_control(
                           run_model = FALSE))
 
-pars_iid <- fit_build_iid$tmb_inputs$parameters
-map_iid  <- fit_build_iid$tmb_inputs$map
+pars_iid <- fit_build_iid$tmb_inputs$parameters #fixed and random effects
+map_iid  <- fit_build_iid$tmb_inputs$map #fixed and mirrored parameters
 
 # fix observation error SD = 0.1
 pars_iid$lnsigma_j <- rep(log(0.1), ncol(data))
@@ -267,20 +215,27 @@ map_iid$lnsigma_j <- factor(rep(NA, ncol(data)))
 #run final model fit with Delta0 and fixed SD
 iid_fit <- dsem(sem=iid_sem, tsdata=data, 
                  family=family,
-                 estimate_delta0=TRUE,
-                 control=dsem_control(parameters = pars_iid,
-                                      map = map_iid,
-                                      quiet = TRUE,
-                                      getsd = TRUE))
+                 estimate_delta0=FALSE,
+                 control=dsem_control(quiet = TRUE,
+                                      map=map_iid, 
+                                      parameters=pars_iid,
+                                      getsd = TRUE,
+                                      newton_loops = 1))
 
 summary(iid_fit)
 AIC(iid_fit)
 
-#### AR1 Model ####
+#------------------------------------------------#
+# Fit Base AR1 recruitment model ----
+#------------------------------------------------#
 
 ar_sem <- "
   #temporal structure
-   log_consumption -> log_consumption, 1, ar_consump
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
    log_invert -> log_invert, 1, ar_invert
    log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
    mean_ao -> mean_ao, 1, ar_ao
@@ -291,7 +246,7 @@ ar_sem <- "
 #build model without running it
 fit_build_ar1 <- dsem(sem = ar_sem, tsdata = data,
                       family = family,
-                      estimate_delta0 = TRUE,
+                      estimate_delta0 = FALSE,
                       control = dsem_control(
                         run_model = FALSE))
 
@@ -307,7 +262,7 @@ map_ar1$lnsigma_j <- factor(rep(NA, ncol(data)))
 #run final model fit with Delta0 and fixed SD
 ar1_fit <- dsem(sem=ar_sem, tsdata=data, 
                 family=family,
-                estimate_delta0=TRUE,
+                estimate_delta0=FALSE,
                 control=dsem_control(parameters = pars_ar1,
                                      map = map_ar1,
                                      quiet = TRUE,
@@ -316,11 +271,17 @@ ar1_fit <- dsem(sem=ar_sem, tsdata=data,
 summary(ar1_fit)
 AIC(ar1_fit)
 
-#### AR1 + prerecruit Model ####
+#------------------------------------------------#
+# Fit Base cohort progression model ----
+#------------------------------------------------#
 
-arR_sem <- "
+prerecruit_sem <- "
   #temporal structure
-   log_consumption -> log_consumption, 1, ar_consump
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
    log_invert -> log_invert, 1, ar_invert
    log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
    mean_ao -> mean_ao, 1, ar_ao
@@ -332,128 +293,625 @@ arR_sem <- "
   log_prerecruit_abun -> log_recruit_abun, 2, prerecruittorecruit"
 
 #build model without running it
-fit_build_arR <- dsem(sem = arR_sem, tsdata = data,
+fit_build_prerecruit <- dsem(sem = prerecruit_sem, tsdata = data,
                       family = family,
-                      estimate_delta0 = TRUE,
+                      estimate_delta0 = FALSE,
                       control = dsem_control(
                         run_model = FALSE))
 
-pars_arR <- fit_build_arR$tmb_inputs$parameters
-map_arR  <- fit_build_arR$tmb_inputs$map
+pars_prerecruit <- fit_build_prerecruit$tmb_inputs$parameters
+map_prerecruit  <- fit_build_prerecruit$tmb_inputs$map
 
 # fix observation error at 0.1
-pars_arR$lnsigma_j <- rep(log(0.1), ncol(data))
+pars_prerecruit$lnsigma_j <- rep(log(0.1), ncol(data))
 
 # prevent estimation of SD
-map_arR$lnsigma_j <- factor(rep(NA, ncol(data)))
+map_prerecruit$lnsigma_j <- factor(rep(NA, ncol(data)))
 
 #run final model fit with Delta0 and fixed SD
-ar1_recruit_fit <- dsem(sem=arR_sem, tsdata=data, 
+prerecruit_fit <- dsem(sem=prerecruit_sem, tsdata=data, 
                 family=family,
-                estimate_delta0=TRUE,
-                control=dsem_control(parameters = pars_arR,
-                                     map = map_arR,
+                estimate_delta0=FALSE,
+                control=dsem_control(parameters = pars_prerecruit,
+                                     map = map_prerecruit,
                                      quiet = TRUE,
                                      getsd = TRUE))
 
-summary(ar1_recruit_fit)
-AIC(ar1_recruit_fit)
+summary(prerecruit_fit)
+plot(prerecruit_fit)
 
-#getting singularity/convergence errors for all models- probably because we're 
-  #estimating so many AR terms?
-#But how to use AIC/the same dataset to test simpler models/different hypotheses?
+#-----------------------------------------#
+#Fit Climate Forcing Causal Model:  ----
+#-----------------------------------------#
 
-#----------------------------------#
-#Fit Causal Models ----
-#----------------------------------#
-
-#### Early Juvenile Model ####
-
-#subset data
-data_early_juv <- scaled_dat %>%
-  select(-year, -log_recruit_abun, -log_invert, -temp_occ) %>%
-  ts()
-
-earlyjuv_sem <- "
-  #temporal structure
-   log_consumption -> log_consumption, 1, ar_consump
+climate_sem <- "
+#temporal structure
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
+   log_invert -> log_invert, 1, ar_invert
    log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
-   
-  #causal pathways
-  log_consumption -> log_prerecruit_abun, 2, codtorecruit
-  mean_ao -> log_prerecruit_abun, 4, aotorecruit
-  sea_ice -> log_prerecruit_abun, 2, icetorecruit"
+   temp_occ -> temp_occ, 1, ar_temp,
+  log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+#causal pathways
+  mean_ao -> sea_ice, 0, aotoice
+  sea_ice -> log_recruit_abun, 2, icetorecruit"
 
 #build model without running it
-fit_build_earlyjuv <- dsem(sem = earlyjuv_sem, tsdata = data_early_juv,
-                      family = family,
-                      estimate_delta0 = TRUE,
-                      control = dsem_control(
-                        run_model = FALSE))
+fit_build_climate <- dsem(sem = climate_sem, tsdata = data,
+                             family = family,
+                             estimate_delta0 = FALSE,
+                             control = dsem_control(
+                               run_model = FALSE))
 
-#this is a new error...
-length(map$fit_build_earlyjuv)
-
-pars_early <- fit_build_earlyjuv$tmb_inputs$parameters
-map_early  <- fit_build_earlyjuv$tmb_inputs$map
+pars_climate <- fit_build_climate$tmb_inputs$parameters
+map_climate  <- fit_build_climate$tmb_inputs$map
 
 # fix observation error at 0.1
-pars_early$lnsigma_j <- rep(log(0.1), ncol(data))
+pars_climate$lnsigma_j <- rep(log(0.1), ncol(data))
 
 # prevent estimation of SD
-map_early$lnsigma_j <- factor(rep(NA, ncol(data)))
+map_climate$lnsigma_j <- factor(rep(NA, ncol(data)))
 
 #run final model fit with Delta0 and fixed SD
-early_juv_fit <- dsem(sem=earlyjuv_sem, tsdata=data_early_juv, 
-                        family=family,
-                        estimate_delta0=TRUE,
-                        control=dsem_control(parameters = pars_early,
-                                             map = map_early,
-                                             quiet = TRUE,
-                                             getsd = TRUE))
+climate_fit <- dsem(sem=climate_sem, tsdata=data, 
+                       family=family,
+                       estimate_delta0=FALSE,
+                       control=dsem_control(parameters = pars_climate,
+                                            map = map_climate,
+                                            quiet = TRUE,
+                                            getsd = TRUE))
 
-summary(early_juv_fit)
+summary(climate_fit) #neither causal pathway significant
 
+#-------------------------------------------------#
+#Fit Larval Food Availability Causal Model:  ----
+#-------------------------------------------------#
 
-#### Late Juvenile Model ####
-
-#subset data
-data_late_juv <- scaled_dat %>%
-  select(-year, -mean_ao, -sea_ice, -log_consumption) %>%
-  ts()
-
-latejuv_sem <- "
-  #temporal structure
-   log_recruit_abun -> log_recruit_abun, 1, ar_rec
-   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
-   temp_occ -> temp_occ, 1, ar_temp
+larval_sem <- "
+#temporal structure
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
    log_invert -> log_invert, 1, ar_invert
-   
-  #causal pathways
-  log_invert -> log_recruit_abun, 1, inverttorecruit
-  log_prerecruit_abun -> log_recruit_abun, 1, pretorecruit
-  temp_occ -> log_recruit_abun, 1, temptorecruit"
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   mean_ao -> mean_ao, 1, ar_ao
+   sea_ice -> sea_ice, 1, ar_ice
+   temp_occ -> temp_occ, 1, ar_temp,
+  log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+#causal pathways
+  sea_ice -> chla, 0, icetochla
+  chla -> log_recruit_abun, 6, chlatorecruit"
 
 #build model without running it
-fit_build_latejuv <- dsem(sem = latejuv_sem, tsdata = data_late_juv,
-                           family = family,
-                           estimate_delta0 = TRUE,
-                           control = dsem_control(
-                             run_model = FALSE))
+fit_build_larval <- dsem(sem = larval_sem, tsdata = data,
+                          family = family,
+                          estimate_delta0 = FALSE,
+                          control = dsem_control(
+                            run_model = FALSE))
 
+pars_larval <- fit_build_larval$tmb_inputs$parameters
+map_larval  <- fit_build_larval$tmb_inputs$map
 
+# fix observation error at 0.1
+pars_larval$lnsigma_j <- rep(log(0.1), ncol(data))
 
+# prevent estimation of SD
+map_larval$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+larval_fit <- dsem(sem=larval_sem, tsdata=data, 
+                    family=family,
+                    estimate_delta0=FALSE,
+                    control=dsem_control(parameters = pars_larval,
+                                         map = map_larval,
+                                         quiet = TRUE,
+                                         getsd = TRUE))
+
+summary(larval_fit) #non-significant and in opposite directions as expected
+
+#-------------------------------------------------#
+#Fit Juvenile Food Availability Causal Model:  ----
+#-------------------------------------------------#
+
+juvenile_sem <- "
+#temporal structure
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
+   log_invert -> log_invert, 1, ar_invert
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   mean_ao -> mean_ao, 1, ar_ao
+   sea_ice -> sea_ice, 1, ar_ice
+   temp_occ -> temp_occ, 1, ar_temp,
+  log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+#causal pathways
+  sea_ice -> energetic_condition, 0, icetocondition
+  log_invert -> energetic_condition, 0, inverttocondition
+  energetic_condition -> log_recruit_abun, 1, conditiontorecruit"
+
+#build model without running it
+fit_build_juvenile <- dsem(sem = juvenile_sem, tsdata = data,
+                         family = family,
+                         estimate_delta0 = FALSE,
+                         control = dsem_control(
+                           run_model = FALSE))
+
+pars_juvenile <- fit_build_juvenile$tmb_inputs$parameters
+map_juvenile  <- fit_build_juvenile$tmb_inputs$map
+
+# fix observation error at 0.1
+pars_juvenile$lnsigma_j <- rep(log(0.1), ncol(data))
+
+# prevent estimation of SD
+map_juvenile$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+juvenile_fit <- dsem(sem=juvenile_sem, tsdata=data, 
+                   family=family,
+                   estimate_delta0=FALSE,
+                   control=dsem_control(parameters = pars_juvenile,
+                                        map = map_juvenile,
+                                        quiet = TRUE,
+                                        getsd = TRUE))
+
+summary(juvenile_fit) #strong rxn between sea ice and condition
+
+#-------------------------------------------------#
+#Fit Habitat Quality Causal Model:  ----
+#-------------------------------------------------#
+
+habitat_sem <- "
+#temporal structure
+consumption -> consumption, 1, ar_consump
+extent_0c -> extent_0c, 1, ar_cp
+bcd_imm -> bcd_imm, 1, ar_bcd,
+energetic_condition -> energetic_condition, 1, ar_cond, 
+chla -> chla, 1, ar_chla
+log_invert -> log_invert, 1, ar_invert
+log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+mean_ao -> mean_ao, 1, ar_ao
+sea_ice -> sea_ice, 1, ar_ice
+temp_occ -> temp_occ, 1, ar_temp,
+log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+#causal pathway
+extent_0c -> temp_occ, 0, cptotempocc
+temp_occ -> log_recruit_abun, 1, tempocctorecruit"
+
+#build model without running it
+fit_build_habitat <- dsem(sem = habitat_sem, tsdata = data,
+                          family = family,
+                          estimate_delta0 = FALSE,
+                          control = dsem_control(
+                            run_model = FALSE))
+
+pars_habitat <- fit_build_habitat$tmb_inputs$parameters
+map_habitat  <- fit_build_habitat$tmb_inputs$map
+
+# fix observation error at 0.1
+pars_habitat$lnsigma_j <- rep(log(0.1), ncol(data))
+
+# prevent estimation of SD
+map_habitat$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+habitat_fit <- dsem(sem=habitat_sem, tsdata=data, 
+                    family=family,
+                    estimate_delta0=FALSE,
+                    control=dsem_control(parameters = pars_habitat,
+                                         map = map_habitat,
+                                         quiet = TRUE,
+                                         getsd = TRUE))
+
+summary(habitat_fit) #strong causal links between cp/temperature occupied and
+  #temperature occupied and recruitment
+
+#-------------------------------------------------#
+#Fit Predation Causal Model:  ----
+#-------------------------------------------------#
+
+predation_sem <- "
+#temporal structure
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
+   log_invert -> log_invert, 1, ar_invert
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   mean_ao -> mean_ao, 1, ar_ao
+   sea_ice -> sea_ice, 1, ar_ice
+   temp_occ -> temp_occ, 1, ar_temp,
+  log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+#causal pathways
+  extent_0c -> consumption, 0, cptocod
+  consumption -> log_recruit_abun, 3, codtorecruit"
+
+#build model without running it
+fit_build_predation <- dsem(sem = predation_sem, tsdata = data,
+                         family = family,
+                         estimate_delta0 = FALSE,
+                         control = dsem_control(
+                           run_model = FALSE))
+
+pars_predation <- fit_build_predation$tmb_inputs$parameters
+map_predation  <- fit_build_predation$tmb_inputs$map
+
+# fix observation error at 0.1
+pars_predation$lnsigma_j <- rep(log(0.1), ncol(data))
+
+# prevent estimation of SD
+map_predation$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+predation_fit <- dsem(sem=predation_sem, tsdata=data, 
+                   family=family,
+                   estimate_delta0=FALSE,
+                   control=dsem_control(parameters = pars_predation,
+                                        map = map_predation,
+                                        quiet = TRUE,
+                                        getsd = TRUE))
+
+summary(predation_fit) #no significant pathways
+
+#-------------------------------------------------#
+#Fit Disease Causal Model:  ----
+#-------------------------------------------------#
+
+disease_sem <- "
+#temporal structure
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
+   log_invert -> log_invert, 1, ar_invert
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   mean_ao -> mean_ao, 1, ar_ao
+   sea_ice -> sea_ice, 1, ar_ice
+   temp_occ -> temp_occ, 1, ar_temp,
+  log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+#causal pathways
+  extent_0c -> bcd_imm, 0, cptobcd
+  bcd_imm -> log_recruit_abun, 1, bcdtorecruit"
+
+#build model without running it
+fit_build_disease <- dsem(sem = disease_sem, tsdata = data,
+                            family = family,
+                            estimate_delta0 = FALSE,
+                            control = dsem_control(
+                              run_model = FALSE))
+
+pars_disease <- fit_build_disease$tmb_inputs$parameters
+map_disease  <- fit_build_disease$tmb_inputs$map
+
+# fix observation error at 0.1
+pars_disease$lnsigma_j <- rep(log(0.1), ncol(data))
+
+# prevent estimation of SD
+map_disease$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+disease_fit <- dsem(sem=disease_sem, tsdata=data, 
+                      family=family,
+                      estimate_delta0=FALSE,
+                      control=dsem_control(parameters = pars_disease,
+                                           map = map_disease,
+                                           quiet = TRUE,
+                                           getsd = TRUE))
+
+summary(disease_fit) #cold pool to bcd significant
 
 #------------------------------------------------#
 # Model comparison ----
 #------------------------------------------------#
 
+#marginal AIC comparison of base and causal models
 AIC(iid_fit)
 AIC(ar1_fit)
-AIC(ar1_recruit_fit)
-AIC(early_juv_fit)
-AIC(late_juv_fit)
+AIC(prerecruit_fit)
+AIC(climate_fit)
+AIC(larval_fit)
+AIC(juvenile_fit)
+AIC(habitat_fit)
+AIC(predation_fit)
+AIC(disease_fit)
 
-delta_AIC <- AIC_values - min(AIC_values)
+model_comp <- tibble(
+  model = c("iid", "ar1", "prerecruit", "climate_forcing", "larval_food_availability",
+            "juvenile_food_availability", "habitat_quality", "predation", "disease"),
+  AIC = c(AIC(iid_fit), AIC(ar1_fit), AIC(prerecruit_fit), AIC(climate_fit), AIC(larval_fit),
+          AIC(juvenile_fit), AIC(habitat_fit), AIC(predation_fit), AIC(disease_fit))) %>%
+  mutate(delta_AIC = AIC - min(AIC),
+         weight = exp(-0.5 * delta_AIC) / sum(exp(-0.5 * delta_AIC))) %>%
+  arrange(AIC)
+
+#print table
+model_comp %>%
+  gt() %>%
+  fmt_number(columns = c(AIC, delta_AIC, weight), decimals = 3) %>%
+  cols_label(model = "Model", AIC = "AIC",delta_AIC = "ΔAIC",
+    weight = "AIC Weight")
+
+#put all fitted models in a list
+models <- list(
+  iid = iid_fit,
+  ar1 = ar1_fit,
+  prerecruit = prerecruit_fit,
+  climate_forcing = climate_fit,
+  larval_food_availability = larval_fit,
+  juvenile_food_availability = juvenile_fit,
+  habitat_quality = habitat_fit,
+  predation = predation_fit,
+  disease = disease_fit)
+
+# Function to extract recruitment deviations
+extract_dev <- function(fit, model_name) {
+  df <- as.data.frame(summary(fit))
+  
+  # Handle iid vs others (different parameter names)
+  param_name <- if (model_name == "iid") "iid_rec" else "V[log_recruit_abun]"
+  
+  df %>%
+    filter(name == param_name) %>%
+    transmute(
+      model = model_name,
+      Estimate = Estimate,
+      Std_Error = Std_Error)
+}
+
+# Apply across all models
+dev_comp <- imap_dfr(models, extract_dev) %>%
+  mutate(model = factor(model, levels = names(models))) %>%
+  arrange(desc(Estimate))
+
+#plot
+ggplot(dev_comp, aes(x = model, y = Estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(
+    ymin = Estimate - Std_Error,
+    ymax = Estimate + Std_Error), width = 0.2) +
+  theme_minimal() +
+  ylab("log recruit deviation") +
+  xlab("Model")
+
+#compute %reduction in estimated recruitment variance relative to IID model
+iid_var <- dev_comp %>%
+  filter(model == "iid") %>%
+  pull(Estimate)
+
+reduction_table <- dev_comp %>%
+  select(model, variance = Estimate) %>%
+  mutate(pct_reduction = (iid_var - variance) / iid_var * 100)
+
+#------------------------------------------------#
+# Exploration: play around with forecasting ----
+#------------------------------------------------#
+# One step forecast
+
+#append future year to dataset
+ts_ext <- tsdata %>%
+  as.data.frame() %>%
+  mutate(year = time(tsdata)) %>%
+  add_row(year = max(year) + 1)
+
+# convert back to ts if needed
+ts_ext <- ts(ts_ext[,-which(names(ts_ext)=="year")],
+             start = start(tsdata),
+             frequency = frequency(tsdata))
+
+#set driver scenarios so forecasts are scenario dependent
+#persistence
+ts_ext[nrow(ts_ext), "snow_crab"] <- tail(tsdata[, "snow_crab"], 1)
+
+#warm year
+ts_ext[nrow(ts_ext), "snow_crab"] <- tail(tsdata[, "snow_crab"], 1)
+
+#high biomass
+
+#predict by holding path coefficients constant, re-optimizing latent states
+  #and propagating system dynamics forward, noting that predictions are 
+  #on log scale!
+pred <- predict(fit_dsem, newdata = ts_ext, type = "response")
+
+#Forecasts represent the causal propagation of system dynamics under specified driver scenarios
+
+#---------------------------------------------------------------#
+# Exploration: play around with skill testing out-of-sample
+    #predictive skill for causal vrs predictive model----
+#---------------------------------------------------------------#
+
+#now hindcast skill testing (does the causal structure predict unseen data)
+  #OOS predictive skill
+  #can we predict the mortality event?
+#fit model on data up to t, generature simulations of t +1, extract recruitment, 
+  #compare predicted vrs observed
+
+#setup
+years <- time(tsdata)
+n <- length(years)
+start_i <- 10  # e.g., require 10 years before first forecast
+nsim <- 500  
+
+results <- vector("list", n - 1)
+
+#hindcast loop
+for (i in 1:(n - 1)) {
+  
+  # 1. Subset data
+  ts_sub <- window(tsdata, end = years[i])
+  
+  # 2. Fit model
+  fit_i <- dsem(sem = sem, tsdata = ts_sub)
+  
+  # 3. Extend one step
+  ts_ext <- ts_sub
+  ts_ext <- rbind(ts_ext, rep(NA, ncol(ts_ext)))
+  
+  # 4. Set driver assumptions (example: persistence)
+  ts_ext[nrow(ts_ext), ] <- ts_ext[nrow(ts_ext) - 1, ]
+  
+  # 5. Simulate forward
+  sims <- simulate(fit_i, nsim = nsim, newdata = ts_ext)
+  
+  # sims is typically an array: [time, variable, simulation]
+  
+  # extract recruitment at final timestep
+  rec_sims <- sims[nrow(ts_ext), "recruitment", ]
+  
+  # 6. Summarize distribution
+  results[[i]] <- data.frame(
+    year = years[i + 1],
+    pred_median = median(rec_sims, na.rm = TRUE),
+    pred_lo = quantile(rec_sims, 0.025, na.rm = TRUE),
+    pred_hi = quantile(rec_sims, 0.975, na.rm = TRUE),
+    obs = tsdata[i + 1, "recruitment"]
+  )
+}
+
+hindcast <- bind_rows(results)
+
+#evaluate skill with uncertainty 
+hindcast <- hindcast %>%
+  mutate(
+    covered = obs >= pred_lo & obs <= pred_hi,
+    interval_width = pred_hi - pred_lo,
+    error = pred_median - obs
+  )
+
+# Coverage probability (should be ~0.95 for 95% CI)
+coverage <- mean(hindcast$covered, na.rm = TRUE)
+
+# RMSE using median prediction
+RMSE <- sqrt(mean((hindcast$error)^2, na.rm = TRUE))
+
+#Prediction intervals generated by simulating from the fitted DSEM at each hindcast step 
+
+# Nash–Sutcliffe Efficiency
+NSE <- 1 - sum((hindcast$obs - hindcast$pred)^2) /
+  sum((hindcast$obs - mean(hindcast$obs))^2)
+
+#plot
+ggplot(hindcast, aes(x = year)) +
+  
+  # prediction interval (ribbon)
+  geom_ribbon(aes(ymin = pred_lo, ymax = pred_hi),
+              alpha = 0.2) +
+  
+  # median prediction line
+  geom_line(aes(y = pred_median), linewidth = 1) +
+  
+  # observed points
+  geom_point(aes(y = obs), size = 2) +
+  
+  # optional: connect observed values
+  geom_line(aes(y = obs), linetype = "dashed") +
+  
+  labs(
+    x = "Year",
+    y = "Recruitment",
+    title = "Hindcast with 1-year-ahead predictions",
+    subtitle = "Shaded area = 95% prediction interval"
+  ) +
+  
+  theme_minimal()
+
+#misses that are outside interval 
+hindcast <- hindcast %>%
+  mutate(outside = obs < pred_lo | obs > pred_hi)
+
+ggplot(hindcast, aes(x = year)) +
+  geom_ribbon(aes(ymin = pred_lo, ymax = pred_hi), alpha = 0.2) +
+  geom_line(aes(y = pred_median)) +
+  geom_point(aes(y = obs, color = outside), size = 2) +
+  scale_color_manual(values = c("FALSE" = "black", "TRUE" = "red")) +
+  theme_minimal()
+
+#now compare oos predictive skill of GAM and compare skill
+gamm_fit <- gamm(recruitment ~ 
+                   s(snow_crab) +
+                   s(temperature),
+                 correlation = corAR1(),
+                 data = ts_sub)
+
+#rolling hindcast
+years <- time(tsdata)
+n <- length(years)
+
+gam_results <- vector("list", n - 1)
+
+for (i in 1:(n - 1)) {
+  
+  ts_sub <- window(tsdata, end = years[i])
+  
+  # fit GAM
+  gam_fit <- gam(recruitment ~ s(snow_crab) + s(temperature),
+                 data = as.data.frame(ts_sub))
+  
+  # predict t+1
+  newdata <- as.data.frame(ts_sub[nrow(ts_sub), , drop = FALSE])
+  
+  pred <- predict(gam_fit, newdata = newdata)
+  
+  gam_results[[i]] <- data.frame(
+    year = years[i + 1],
+    pred = pred,
+    obs  = tsdata[i + 1, "recruitment"]
+  )
+}
+
+gam_hindcast <- dplyr::bind_rows(gam_results)
+
+#compute predictive skill
+gam_hindcast <- gam_hindcast %>%
+  mutate(
+    error = pred - obs,
+    sq_error = error^2
+  )
+
+gam_rmse <- sqrt(mean(gam_hindcast$sq_error, na.rm = TRUE))
+gam_cor <- cor(gam_hindcast$pred, gam_hindcast$obs)
+
+#compare to dsem
+comparison <- data.frame(
+  model = c("DSEM", "GAM"),
+  RMSE = c(
+    sqrt(mean((hindcast$pred_median - hindcast$obs)^2)),
+    gam_rmse
+  ),
+  correlation = c(
+    cor(hindcast$pred_median, hindcast$obs),
+    gam_cor
+  )
+)
+
+#plot comparison
+bind_rows(
+  hindcast %>% mutate(model = "DSEM", pred = pred_median),
+  gam_hindcast %>% mutate(model = "GAM")
+) %>%
+  ggplot(aes(x = year)) +
+  geom_line(aes(y = obs), linetype = "dashed") +
+  geom_line(aes(y = pred, color = model)) +
+  facet_wrap(~model) +
+  theme_minimal()
+
+#Wakefield: collapse, development of indicators that looking back showed early warning
+  #use of predictive models to evaluate indicator importance, shift to causal models, 
+  #does a more mechanistic, causal understanding improve our oos-prediction, and 
+  #one-year forecast (see Ward et al)? End with assumption of non-stationarity, and rxn can change 
+  #in both 

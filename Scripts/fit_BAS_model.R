@@ -20,46 +20,15 @@ library(BAS)
 library(readxl)
 library(gbm)
 
-## Read in setup for crab data
-source("./Scripts/get_crab_data.R")
-
 #Read in indicator data
 indicators <- read.csv("./Output/snow_esp_indicator_timeseries.csv")
+
+#read in recruitment response 
+recruit_abun <- read.csv("./Output/recruit_abundance.csv", row.names = F)
 
 # Set years
 current_year <- 2025
 years <- 1988:current_year
-
-############################################################
-#calculate pre-recruit abundance as our response: 
-  #i.e. survey-derived abundance of 65-80mm CW male snow crab
-  #Size range selected using St. Marie 1995 size at age estimates
-  #(~6.7-7.7 years post settlement, 1-2 molts from terminal)
-
-recruit_abun <- calc_bioabund(crab_data = snow,
-                                   species = "SNOW",
-                                   region = "EBS",
-                                   years = years,
-                                   sex = "male",
-                                   size_min = 65,
-                                   size_max = 80,
-                                   shell_condition = "new_hardshell") %>%
-                select(YEAR, ABUNDANCE) %>%
-                right_join(., expand.grid(YEAR = years)) %>%
-                arrange(YEAR) %>%
-                mutate(ABUNDANCE = as.numeric(ABUNDANCE/1e6)) %>%
-                rename_with(tolower)
-
-#Plot
-recruit_abun %>%
-  ggplot(aes(x = year, y = abundance)) +
-  geom_point() +
-  geom_line()+
-  labs(y = "Number of crab (millions)", x = "") +
-  theme_bw()
-
-#Write output 
-write_csv(recruit_abun, "./Output/BAS_recruit_abundance.csv", row.names = F)
 
 #join indicator and response
 recruit_abun %>%
@@ -368,39 +337,3 @@ par(mfrow=c(2,3))
 plot(gbm.fit, i.var=3)
 
 
-# # Plot Fit =========
-# 
-# #Plot Fitted Model - POSTERIOR PREDICTIVE DISTRIBUTION
-# # post.preds <- apply(out$BUGSoutput$sims.list$post.pred, 2, quantile, probs=c(0.025,0.25,0.5,0.75,0.975))
-# pdf(file.path(dir.figs,'Fits and Other Params.pdf'), height=6, width=7)
-# 
-# preds <- predict(bas.lm)
-# 
-# post.preds <- preds$Ybma
-# # pred.low <- preds$Ybma - 1.96* preds$se.bma.pred
-# 
-# y.lim <- c(min(input.rec, post.preds), max(input.rec, post.preds))
-# x.lim <- c(min(years),max(years))
-# 
-# plot(x=NULL, y=NULL, xlab='Recruitment Year', ylab='log(recruitment)', pch=21, bg='blue',
-#      ylim=y.lim, xlim=x.lim)
-# abline(h=0)
-# lines(x=years, y=input.rec, lwd=2, col='blue', lty=3)
-# points(x=years, y=input.rec, pch=21, bg='blue')
-# 
-# #Fitted Model
-# # polygon(x=c(years, rev(years)), y=c(post.preds[1,],rev(post.preds[5,])), col=rgb(1,0,0,alpha=0.25), border=FALSE)
-# # polygon(x=c(years, rev(years)), y=c(post.preds[2,],rev(post.preds[4,])), col=rgb(1,0,0,alpha=0.25), border=FALSE)
-# lines(x=years, y=post.preds[,1], col=rgb(1,0,0,alpha=0.5), lwd=2)
-# legend('topleft', legend=c('Observed','Post. Pred.'), col=c('blue','red'), lty=c(3,1))
-# 
-# dev.off()
-# 
-# 
-# #Plot Model Ranks =========
-# png(file.path(dir.figs, 'Model Ranks.png'), height=6, width=9, units='in', res=500)
-# par(oma=c(0,18,0,0))
-# image(bas.lm, rotate=F)
-# 
-# dev.off()
-# 
