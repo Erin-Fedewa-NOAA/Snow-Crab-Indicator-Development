@@ -26,7 +26,7 @@ ice <- read_csv("./Output/seaice_output.csv")
 clutch <- read_csv("./Output/reproductive_potential.csv")
 ratio <- read_csv("./Output/operational_sex_ratio.csv")
 mat <- read_csv("./Output/snow_SAM.csv")
-consump <- read_csv("./Data/cod_consumption.csv")
+consump <- read_csv("./Data/Contributor Indicators/cod_consumption.csv")
 condition <- read_csv("./Data/opilio_condition.csv")
 chla <- read_csv("./Data/Contributor Indicators/Chlorophylla_Biomass.csv")
 
@@ -35,10 +35,10 @@ current_year <- 2025
 
 #########################################################
 
-# combine indices and save output
-invert %>%
+# combine indicator data
+eco_ind <- invert %>%
   full_join(env %>%
-              select(YEAR, extent_coldpool, extent_0C, Mean_AO)) %>%
+              select(YEAR, extent_0C, Mean_AO)) %>%
   full_join(d95 %>%
               select(YEAR, mature_male_d95)) %>%
   full_join(bcd %>%
@@ -59,18 +59,17 @@ invert %>%
   full_join(mat %>%
               select(YEAR, male_maturity, female_maturity)) %>%
   full_join(consump %>%
-              rename(YEAR=year)) %>%
+              rename(YEAR=year) %>%
+              select(YEAR, ebs_consumption)) %>%
   full_join(condition %>%
               select(year,annual_mean) %>%
               rename(YEAR=year, energetic_condition = annual_mean)) %>%
   full_join(chla) %>%
   rename(year = YEAR) %>%
-  arrange(year) -> eco_ind
+  arrange(year) 
 
-#subset to only include ESP indicators and write csv
-eco_ind %>%
-  select(-extent_coldpool) %>%
-  write.csv("./Output/snow_esp_indicator_timeseries.csv", row.names = F)
+#output indicator dataset
+write.csv(eco_ind, "./Output/snow_esp_indicator_timeseries.csv", row.names = F)
 
 
 #Assess collinearity b/w indicators 

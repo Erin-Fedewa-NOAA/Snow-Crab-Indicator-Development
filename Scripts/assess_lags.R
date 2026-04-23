@@ -11,17 +11,17 @@ library(forecast)
 
 #Read in indicator data
 indicators <- read.csv("./Output/snow_esp_indicator_timeseries.csv") %>%
-  rename(sea_ice = Mar_Apr_ice_EBS_NBS)
+  rename(sea_ice = Mar_Apr_ice_EBS_NBS, 
+         consumption = ebs_consumption)
 
 #read in recruitment response 
-recruit_abun <- read.csv("./Output/recruit_abundance.csv")
+recruit_abun <- read.csv("./Output/response_recruit_abundance.csv")
 
 #-----------------------------------------#
 #Data wrangling ----
 #-----------------------------------------#
 #join indicator and responses
 recruit_abun %>%
-  full_join(recruit_abun) %>%
   full_join(indicators) %>%
   arrange(year) %>%
   rename_with(tolower) -> snow_dat
@@ -31,16 +31,16 @@ recruit_abun %>%
 model_dat <- snow_dat %>%
   rename_with(tolower) %>%
   mutate(across(everything(), as.numeric)) %>%
-  select(year, total_invert, temp_occ, recruit_abun, prerecruit_abun,
+  select(year, total_invert, temp_occ, recruit_abun_mod, prerecruit_abun_mod,
          mean_ao, sea_ice, consumption, extent_0c, bcd_imm,
          energetic_condition, chla)
 
 #Scale all variables and transform abundance variables 
 scaled_dat <- model_dat %>%
   mutate(log_invert = log(total_invert),
-         log_recruit_abun = log(recruit_abun),
-         log_prerecruit_abun = log(prerecruit_abun)) %>%
-  select(-total_invert, -recruit_abun, -prerecruit_abun) %>%
+         log_recruit_abun = log(recruit_abun_mod),
+         log_prerecruit_abun = log(prerecruit_abun_mod)) %>%
+  select(-total_invert, -recruit_abun_mod, -prerecruit_abun_mod) %>%
   mutate(across(-year, ~ as.numeric(scale(.))))
 
 #------------------------------------------------#

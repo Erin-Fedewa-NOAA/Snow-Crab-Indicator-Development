@@ -3,8 +3,7 @@
 
 #Author: E. Fedewa
 
-#Follow ups for May CPT: add in 2025 consumption estimate, re-run with Emily
-  #immature index, diagnostics, d-sep tests
+#Follow ups for May CPT: diagnostics, d-sep tests, mortality models
 
 #load
 library(tidyverse)
@@ -25,10 +24,13 @@ library(gt)
 
 #Read in indicator data
 indicators <- read.csv("./Output/snow_esp_indicator_timeseries.csv") %>%
-                rename(sea_ice = Mar_Apr_ice_EBS_NBS)
+                rename(sea_ice = Mar_Apr_ice_EBS_NBS,
+                       consumption = ebs_consumption)
 
-#read in recruitment response 
-recruit_abun <- read.csv("./Output/recruit_abundance.csv")
+#read in recruitment response - using immature-only estimates from
+  #new SAP maturity workflow 
+recruit_abun <- read.csv("./Output/response_ recruit_abundance.csv") %>% 
+  select(-recruit_abun, -prerecruit_abun, -juvenile_abun)
 
 # Set years
 current_year = 2025
@@ -39,7 +41,6 @@ years <- 1988:current_year
 #-----------------------------------------#
 #join indicator and responses
 recruit_abun %>%
-  full_join(recruit_abun) %>%
   full_join(indicators) %>%
   arrange(year) %>%
   rename_with(tolower) -> snow_dat
@@ -49,9 +50,9 @@ recruit_abun %>%
 model_dat <- snow_dat %>%
   rename_with(tolower) %>%
   mutate(across(everything(), as.numeric)) %>%
-  select(year, total_invert, temp_occ, recruit_abun, prerecruit_abun,
+  select(year, total_invert, temp_occ, recruit_abun_mod, prerecruit_abun_mod,
          mean_ao, sea_ice, consumption, extent_0c, bcd_imm,
-         energetic_condition, chla)
+         energetic_condition, chla, juvenile_abun_mod)
 
 #plot
 model_dat %>%
@@ -79,9 +80,11 @@ plot_histo(model_dat %>% select(-year))
 #Scale all variables and transform abundance variables 
 scaled_dat <- model_dat %>%
   mutate(log_invert = log(total_invert),
-         log_recruit_abun = log(recruit_abun),
-         log_prerecruit_abun = log(prerecruit_abun)) %>%
-  select(-total_invert, -recruit_abun, -prerecruit_abun) %>%
+         log_recruit_abun = log(recruit_abun_mod),
+         log_prerecruit_abun = log(prerecruit_abun_mod),
+         log_juvenile_abun = log(juvenile_abun_mod)) %>%
+  select(-total_invert, -recruit_abun_mod, -prerecruit_abun_mod, 
+         -juvenile_abun_mod) %>%
   mutate(across(-year, ~ as.numeric(scale(.))))
   
 #check distributions now
@@ -223,7 +226,6 @@ iid_fit <- dsem(sem=iid_sem, tsdata=data,
                                       newton_loops = 1))
 
 summary(iid_fit)
-AIC(iid_fit)
 
 #------------------------------------------------#
 # Fit Base AR1 recruitment model ----
@@ -269,10 +271,9 @@ ar1_fit <- dsem(sem=ar_sem, tsdata=data,
                                      getsd = TRUE))
 
 summary(ar1_fit)
-AIC(ar1_fit)
 
 #------------------------------------------------#
-# Fit Base cohort progression model ----
+# Fit Base pre-recruit model ----
 #------------------------------------------------#
 
 prerecruit_sem <- "
@@ -290,7 +291,7 @@ prerecruit_sem <- "
   log_recruit_abun -> log_recruit_abun, 1, ar_rec
 
   #causal pathway
-  log_prerecruit_abun -> log_recruit_abun, 2, prerecruittorecruit"
+  log_prerecruit_abun -> log_recruit_abun, 1, prerecruittorecruit"
 
 #build model without running it
 fit_build_prerecruit <- dsem(sem = prerecruit_sem, tsdata = data,
@@ -318,7 +319,55 @@ prerecruit_fit <- dsem(sem=prerecruit_sem, tsdata=data,
                                      getsd = TRUE))
 
 summary(prerecruit_fit)
-plot(prerecruit_fit)
+
+#------------------------------------------------#
+# Fit Base cohort progression model ----
+#------------------------------------------------#
+
+cohort_sem <- "
+  #temporal structure
+   consumption -> consumption, 1, ar_consump
+   extent_0c -> extent_0c, 1, ar_cp
+   bcd_imm -> bcd_imm, 1, ar_bcd,
+   energetic_condition -> energetic_condition, 1, ar_cond, 
+   chla -> chla, 1, ar_chla
+   log_invert -> log_invert, 1, ar_invert
+   log_prerecruit_abun -> log_prerecruit_abun, 1, ar_prerec
+   mean_ao -> mean_ao, 1, ar_ao
+   sea_ice -> sea_ice, 1, ar_ice
+   temp_occ -> temp_occ, 1, ar_temp,
+  log_recruit_abun -> log_recruit_abun, 1, ar_rec
+
+  #causal pathways
+  log_prerecruit_abun -> log_recruit_abun, 1, prerecruittorecruit
+  log_juv_abun -> log_prerecruit_abun, 1, juvtoprerecruit"
+
+#build model without running it
+fit_build_cohort <- dsem(sem = cohort_sem, tsdata = data,
+                             family = family,
+                             estimate_delta0 = FALSE,
+                             control = dsem_control(
+                               run_model = FALSE))
+
+pars_cohort <- fit_build_cohort$tmb_inputs$parameters
+map_cohort  <- fit_build_cohort$tmb_inputs$map
+
+# fix observation error at 0.1
+pars_cohort$lnsigma_j <- rep(log(0.1), ncol(data))
+
+# prevent estimation of SD
+map_cohort$lnsigma_j <- factor(rep(NA, ncol(data)))
+
+#run final model fit with Delta0 and fixed SD
+cohort_fit <- dsem(sem=cohort_sem, tsdata=data, 
+                       family=family,
+                       estimate_delta0=FALSE,
+                       control=dsem_control(parameters = pars_cohort,
+                                            map = map_cohort,
+                                            quiet = TRUE,
+                                            getsd = TRUE))
+
+summary(cohort_fit)
 
 #-----------------------------------------#
 #Fit Climate Forcing Causal Model:  ----
@@ -587,7 +636,7 @@ disease_sem <- "
 
 #causal pathways
   extent_0c -> bcd_imm, 0, cptobcd
-  bcd_imm -> log_recruit_abun, 1, bcdtorecruit"
+  bcd_imm -> log_recruit_abun, 3, bcdtorecruit"
 
 #build model without running it
 fit_build_disease <- dsem(sem = disease_sem, tsdata = data,
@@ -686,8 +735,8 @@ ggplot(dev_comp, aes(x = model, y = Estimate)) +
     ymin = Estimate - Std_Error,
     ymax = Estimate + Std_Error), width = 0.2) +
   theme_minimal() +
-  ylab("log recruit deviation") +
-  xlab("Model")
+  labs(y= "log recruit deviation", x= "") +
+  theme(axis.text.x = element_text(angle = 45))
 
 #compute %reduction in estimated recruitment variance relative to IID model
 iid_var <- dev_comp %>%
@@ -698,9 +747,9 @@ reduction_table <- dev_comp %>%
   select(model, variance = Estimate) %>%
   mutate(pct_reduction = (iid_var - variance) / iid_var * 100)
 
-#------------------------------------------------#
-# Exploration: play around with forecasting ----
-#------------------------------------------------#
+#----------------------------------------------------#
+# Exploration: play around with forecast skill ----
+#----------------------------------------------------#
 # One step forecast
 
 #append future year to dataset
