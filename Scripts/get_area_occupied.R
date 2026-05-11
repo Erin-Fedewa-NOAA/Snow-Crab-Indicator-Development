@@ -18,17 +18,16 @@ source("./Scripts/get_crab_data.R")
 cpue <- snow$specimen %>% 
   left_join(., mat_size) %>%
   mutate(CATEGORY = case_when((SEX == 1 & SIZE >= MAT_SIZE) ~ "mature_male",
-                              (SEX == 1 & SIZE < MAT_SIZE) ~ "immature_male",
                               (SEX == 2 & CLUTCH_SIZE >= 1) ~ "mature_female",
-                              (SEX == 2 & CLUTCH_SIZE == 0) ~ "immature_female",
+                              (SEX == 2 & CLUTCH_SIZE == 0 | SEX == 1 & SIZE < MAT_SIZE) ~ "immature",
                               TRUE ~ NA)) %>%
   filter(YEAR %in% years,
          !is.na(CATEGORY)) %>%
   group_by(YEAR, STATION_ID, LATITUDE, LONGITUDE, AREA_SWEPT, CATEGORY) %>%
   summarise(COUNT = round(sum(SAMPLING_FACTOR))) %>%
   pivot_wider(names_from = CATEGORY, values_from = COUNT) %>%
-  mutate(population = sum(immature_male, mature_male, immature_female, mature_female, na.rm = T)) %>%
-  pivot_longer(c(6:10), names_to = "CATEGORY", values_to = "COUNT") %>%
+  mutate(population = sum(immature, mature_male, mature_female, na.rm = T)) %>%
+  pivot_longer(c(6:9), names_to = "CATEGORY", values_to = "COUNT") %>%
   filter(CATEGORY != "NA") %>%
   mutate(COUNT = replace_na(COUNT, 0),
          CPUE = COUNT / AREA_SWEPT) %>%
@@ -114,8 +113,7 @@ missing <- data.frame(YEAR = 2020)
   d95 %>%
     select(-mean_cpue) %>%
     pivot_wider(names_from = "CATEGORY", values_from = "d95") %>%
-    rename(immature_female_d95=immature_female,
-           immature_male_d95=immature_male,
+    rename(immature_d95=immature,
            mature_female_d95=mature_female,
            mature_male_d95=mature_male,
            population_d95=population) %>%

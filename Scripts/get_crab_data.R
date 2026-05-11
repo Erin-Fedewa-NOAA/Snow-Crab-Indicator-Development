@@ -33,7 +33,7 @@ haul <- snow$haul
 
 #Define standard stations and corner stations ----
   #(NOTE: corner stations dropped in 2024)
-stations <- read.csv("Y:/KOD_Survey/EBS Shelf/Data_Processing/Data/lookup_tables/station_lookup.csv")
+stations <- read.csv("./Data/station_lookup.csv")
 
 corners <- stations %>% 
   filter(STATION_TYPE == "MTCA_CORNER") %>%
