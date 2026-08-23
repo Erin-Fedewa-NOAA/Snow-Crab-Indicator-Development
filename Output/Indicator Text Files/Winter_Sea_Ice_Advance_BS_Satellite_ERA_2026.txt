@@ -1,0 +1,37 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Winter_Sea_Ice_Advance_BS_Satellite_ERA"
+
+#DESCRIPTION
+"March-April average winter sea ice concentration in the EBS and NBS bottom trawl survey area
+                      from the ERA5 reanalysis dataset. Concentration values represent the percentage of the Bering Sea 
+                      covered by sea ice, with values below 15% considered ice-free. Proposed sign of the relationship is positive"
+
+#STATUS_TRENDS
+"Sea ice extent increased substantially from spring 2025 to spring 2026, and is well  
+                        above the time series mean. The spring 2026 sea ice extent estimate is the highest 
+                        observed the Bering Sea since the last cold stanza that ended in 2013"
+
+#FACTORS
+"Sea ice in the Bering Sea is driven by atmospheric CO2, ocean heat transport and winds."
+
+#IMPLICATIONS
+"Low levels of sea ice are associated with dampened productivity of snow crab (Mullowney et al., 2023), 
+                       so declines in sea ice concentration suggest poor conditions for recruitment."
+
+#REFERENCES
+"Mullowney DRJ, Baker KD, Szuwalski CS, Boudreau SA, Cyr F, et al. (2023) Sub-Arctic no more: Short- and long-term global-scale prospects for snow crab (Chionoecetes opilio) under global warming. PLOS Climate 2(10): e0000294. https://doi.org/10.1371/journal.pclm.0000294"
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1980	1981	1982	1983	1984	1985	1986	1987	1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+44.6552762353764	34.4988397102809	41.1587631493284	41.7546391554586	53.1769411943022	48.6897536031122	43.9851934652107	36.6815011111369	54.0543664695856	27.2993319845496	49.2982848188468	53.675736933019	60.1133388655295	40.6853745465368	53.8125444551478	57.1054489921565	29.5771470903743	49.0278994220762	38.720528689494	59.0078849339121	36.2170536233398	27.1275587788934	33.6435072963091	33.1882858924024	37.305418056624	36.7970965849051	42.9534419890373	50.346828734868	66.0487608377989	55.8261925309272	63.1425815446268	44.6278406390377	70.3161173778938	58.0345261751357	33.953309936178	36.7038875767654	29.8509486597274	39.5753818375955	10.2439815605436	6.47157626969705	35.4770394861192	33.7474769026665	35.6788872727986	38.7912536517469	43.0098209262366	37.2361455721982	56.4456820960226

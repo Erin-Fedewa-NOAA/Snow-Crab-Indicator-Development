@@ -1,0 +1,39 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Summer_Snow_Crab_Operational_Sex_Ratio_SEBS_Survey"
+
+#DESCRIPTION
+"The ratio of mature female to large male (95 mm) snow crab abundance in the EBS"
+
+#STATUS_TRENDS
+"The sex ratio of mature female to large male snow crab increased dramatically in 2026, 
+                        reaching a time series high with 85 mature females observed for every large male. The population
+                        has remained heavily female-biased in recent years due to depressed abundances of large males"
+
+#FACTORS
+"The operational sex ratio is directly influenced by the relative abundances of large males and mature females. 
+                  Non-synchronous shifts in abundance between the two sexes, or a male population dominated by small mature males
+                  are two mechanisms for a skewed operational sex ratio."
+
+#IMPLICATIONS
+"A female-biased operational sex ratio suggests the possibility for sperm limitation (Baker et al., 2022), 
+                       however, a high proportion of full clutches in mature females indicates that female sperm reserves are likely
+                       sufficient for egg production. A female-biased sex ratio could also result in increased interspecies mating and 
+                       hybridization due to snow crab mate limitation."
+
+#REFERENCES
+"Baker, K. D., Mullowney, D. R. J., and Sainte-Marie, B. 2022. Large males matter: Low sperm reserves in female snow crab (Chionoecetes opilio) off Newfoundland, Canada. Fisheries Research, 253: 13."
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+10.7022188951562	17.1275716008969	4.60041299706895	6.07173171614922	7.28237177503333	13.6781892728395	21.9122648306164	26.545100712114	7.57985180794836	4.79228863079398	4.71559585860102	4.63445716917074	16.8451761838772	12.1282271763361	4.70456522854966	8.1552263854474	12.2031737692499	13.2910516871775	4.49337947228423	4.46947173472249	5.07678430572345	4.05075874104376	9.99952674070613	16.6169409381516	22.4437170028075	20.816343347979	9.26569401970995	15.482884952159	14.2335834453393	36.2302482871268	32.8663054723387	17.1223790572017	NA	11.3418125352111	9.70232952357678	9.59159974028702	17.2443034237047	32.3999074840619	85.8628903818682

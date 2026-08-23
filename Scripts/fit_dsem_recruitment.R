@@ -33,8 +33,18 @@ indicators <- read.csv("./Output/snow_esp_indicator_timeseries.csv") %>%
 
 #read in recruitment response - using immature-only estimates from
   #new SAP maturity workflow 
-recruit_abun <- read.csv("./Output/response_recruit_abundance.csv") %>% 
-  select(-recruit_abun, -prerecruit_abun, -juvenile_abun)
+recruit_abun <- read.csv("./Output/snow_4050immabund_model.csv") %>% 
+  select(YEAR, ABUNDANCE) %>%
+  rename_with(tolower)
+
+#plot response
+recruit_abun %>%
+  ggplot(aes(year, abundance)) +
+  geom_point() +
+  geom_line()
+  
+#Here: need to clean up abundance output and script 
+
 
 #-----------------------------------------#
 #Functions ----

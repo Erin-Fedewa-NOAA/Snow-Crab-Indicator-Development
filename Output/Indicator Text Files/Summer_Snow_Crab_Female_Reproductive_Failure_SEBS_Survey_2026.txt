@@ -1,0 +1,43 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Summer_Snow_Crab_Female_Reproductive_Failure_SEBS_Survey"
+
+#DESCRIPTION
+"The proportion of hardshell mature female snow crab with no eggs, empty egg cases, or dead 
+                      eggs. Hardshell crab are designated as code “2” to “5” from the EBS bottom trawl survey shell 
+                      condition indices. Proposed sign of the relationship is negative."
+
+#STATUS_TRENDS
+"In 2026, ~3% of the mature female population had empty clutches, and the current year estimate 
+                        is well below the time series mean."
+
+#FACTORS
+"Female reproductive failure is driven by the inability to find a mate, and/or utilize stored 
+                  sperm reserves to fertilize egg clutches (Webb et al., 2016; Murphy et al., 2017). An increased 
+                  frequency of clutch failure may indicate sperm limitation, or energetic limitations imposed on 
+                  extrusion and fertilization. Barren clutches can also be attributed to senescence, suggesting 
+                  that a mature female population composed of old-shell females (primarily shell condition 5) may 
+                  drive year to year trends in the proportion of empty clutches."
+
+#IMPLICATIONS
+"A low proportion of mature females with empty clutches indicates high reproductive potential, 
+                       and suggests that the majority of females were able to find mates or utilize stored sperm during 
+                       the mating season."
+
+#REFERENCES
+"Webb, J. B., Slater, L. M., Eckert, G. L., and Kruse, G. H. 2016. The contribution of fecundity and embryo quality to reproductive potential of eastern Bering Sea snow crab (Chionoecetes opilio). Canadian Journal of Fisheries and Aquatic Sciences, 73: 1800-1814.
+Murphy, J. T., Rugolo, L. J., and Turnock, B. J. 2017. Integrating demographic and environmental variables to calculate an egg production index for the Eastern Bering Sea snow crab (Chionoecetes opilio). Fisheries Research, 193: 143-157."
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+0.717577622266104	7.07555517665957	7.53836550129294	12.0457553058417	12.0913125019521	4.75092048644638	0.927059495041629	2.25903086666286	3.93998106134308	7.95636677738584	14.3970370350982	23.8100924979377	7.43169790898636	5.16805737530047	4.20919088093769	4.38101052451005	14.764948042918	8.17197604199315	2.35989353087424	8.1363738231989	20.6024721315626	5.92258142680033	1.50994926349638	3.45885741803529	8.10146407727096	10.6949161488126	8.30118006231537	10.5757674968874	4.30333669400689	3.63716628455776	1.09722214796396	2.48293090390811	NA	8.75440867090528	14.6159969349245	1.5024002387606	2.22994810750163	0.273612560561184	3.23168143033361

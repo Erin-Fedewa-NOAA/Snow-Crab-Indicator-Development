@@ -1,0 +1,37 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Summer_Snow_Crab_Male_Center_Distribution_SEBS_Survey"
+
+#DESCRIPTION
+"CPUE-weighted average latitude of the mature male snow crab stock during the EBS summer bottom 
+                      trawl survey. Proposed sign of the relationship is positive."
+
+#STATUS_TRENDS
+"Mature male center of abundance changed very little from 2025 to 2026, and remains
+                        near the time series mean."
+
+#FACTORS
+"Historically, centroids of abundance have tracked bottom temperatures, and were further south 
+                  with colder temperatures (Orensanz et al., 2005)."
+
+#IMPLICATIONS
+"Centroids of abundance are expected to shift north under warming as snow crab track preferred 
+                       cold-water habitat. This may have implications for availability to the snow crab fishery and 
+                       NOAA bottom trawl survey."
+
+#REFERENCES
+"Orensanz, J., Ernst, B., Armstrong, D., Stabeno, P., and Livingston, P. 2005. Contraction of the geographic range of distribution of snow crab (Chionoecetes opilio) in the Eastern Bering Sea: An environmental ratchet? Reports of California Cooperative Oceanic Fisheries Investigations, 45: 65-79."
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+58.8225951049856	58.5227640578827	58.320141175686	58.1065561224576	58.799902803272	59.1304264230759	58.7449614976809	58.1263693152455	57.9388466052375	57.9925428073211	58.6121662969502	58.6260572134418	59.1230106318653	59.4661387283539	59.4971371876725	59.4588251627604	59.3368299994991	58.9269588406409	59.0679368294474	58.6339582211999	58.5924704537819	58.0989539913474	58.8495691474737	58.5962487015095	58.2948103359243	58.1594380331766	57.9769637951392	58.6568749617396	58.9302425284582	59.2673824010295	59.3450756996106	59.5918135598904	NA	59.7736875672147	59.6916342780666	59.3439986046436	58.9577420130116	58.6760227013168	58.6639199199224

@@ -1,0 +1,40 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Summer_Snow_Crab_Juvenile_Condition_SEBS_Survey"
+
+#DESCRIPTION
+"Summer snow crab juvenile energetic condition is estimated from water content in the hepatopancreas (% dry weight) 
+                      sampled from snow crab on the EBS bottom trawl survey. Proposed sign of the relationship is positive."
+
+#STATUS_TRENDS
+"Energetic condition of juvenile snow crab declined slightly from 2025 to 2026. The current year estimate
+                        remains well above a laboratory-derived starvation threshold and energetic condition estimates during the
+                        snow crab collapse."
+
+#FACTORS
+"Dramatic declines in energetic condition during the 2018-2019 snow crab population collapse were driven by warming 
+                  during a marine heatwave and high snow crab population density (Fedewa et al., 2025). Declines in lipid storage in 
+                  juvenile snow crab have also been linked to warmer temperatures and reduced food quality in the Bering Sea (Copeman et al., 2021)."
+
+#IMPLICATIONS
+"Increased energetic condition suggests favorable conditions for high survival and recruitment, whereas energetic 
+                       condition that falls below a laboratory-derived threshold of 22.6% has been attributed to starvation-induced mortality (Copeman et al., in prep). "
+
+#REFERENCES
+"Copeman, L. A., Ryer, C. H., Eisner, L. B., Nielsen, J. M., Spencer, M. L., Iseri, P. J., and Ottmar, M. L. 2021. Decreased lipid storage in juvenile Bering Sea crabs (Chionoecetes spp.) in a warm (2014) compared to a cold (2012) year on the southeastern Bering Sea. Polar Biology, 44: 1883-1901.
+Fedewa, E.J., Copeman, L.A., Litzow, M.A. 2025. Energetic limitations and mass mortality of Bering Sea snow crab:
+ Interacting effects of warming and density on collapse and recovery. Canadian Journal of Fisheries and Aquatic Sciences. 82: 1-14."
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+18.8718542448105	NA	33.8082558749964	31.9587192536743	31.9013346791566	30.7066854886888	30.9249769859525	29.7455879290328

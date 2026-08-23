@@ -1,23 +1,21 @@
 #Central script to load EBS BT survey data via crabpack R package and define
   #stations, maturity and core area for subsetting indicators
 
-#Script Authors: Shannon Hennessey & Erin Fedewa 
-
-#FOLLOW UP: Next year create a dynamic core area that varies annually 
+#Follow ups: 
+#Next year: Use immature/male male station-level CPUE data output 
+#from sdmTMB modeling workflow to generate indicators by sex/maturity 
+#stage instead of mean size at 50% maturity as annual cutline
 
 ## Load packages
 library(crabpack)
 library(tidyverse)
 library(tidync)
 library(lubridate)
-library(sf)
-library(httr)
-library(akgfmaps)
 
 ##########################################################
 
 # Set years ----
-current_year <- 2025
+current_year <- 2026
 years <- 1988:current_year
 
 ## Pull haul and snow crab specimen data ----
@@ -41,50 +39,35 @@ corners <- stations %>%
 
 #Read in size at 50% probability of maturity ----
   #assign static mean cutline to years with no chela data:
-mat_size <- get_male_maturity(species = "SNOW", 
-                              region = "EBS")$model_parameters %>% 
-  select(-c("A_EST", "A_SE")) %>%
-  rename(MAT_SIZE = B_EST, 
-         STD_ERR = B_SE) %>%
-  right_join(., expand_grid(YEAR = years,
-                            SPECIES = "SNOW", 
-                            REGION = "EBS",
-                            DISTRICT = "ALL")) %>%
-  mutate(MAT_SIZE = case_when(is.na(MAT_SIZE) ~ mean(MAT_SIZE, na.rm=T), 
-                              TRUE ~ MAT_SIZE)) %>%
-  filter(YEAR != 2020)
+mat <- read.csv("./Output/Contributor data/indicator_male_sam.csv") %>%
+  select(YEAR, SAM) %>%
+  rename_with(tolower)
 
 #Calculate station-level snow crab CPUE ----
 cpue <- crabpack::calc_cpue(crab_data = snow,
                             species = "SNOW",
                             years = years)
 
-#Define snow crab core area for spatially subsetting indicators ----
-  #i.e. stations containing 50th percentile of snow crab CPUE
-cpue50_core <- cpue %>%
-  filter(!STATION_ID %in% corners) %>% #remove corner stations
-  group_by(STATION_ID) %>%
-  summarise(MEAN_CPUE = mean(CPUE)) %>%
-  filter(MEAN_CPUE > quantile(MEAN_CPUE, 0.50)) %>%
-  left_join(., stations %>% select(STATION_ID, LATITUDE, LONGITUDE))
+#Define spatially varying snow crab core area
+  #ie Stations containing the upper 75th percentile of snow crab CPUE within each year
+cpue75_core <- cpue %>%
+  filter(!STATION_ID %in% corners) %>%
+  group_by(YEAR) %>%
+  mutate(cpue_75th = quantile(CPUE, 0.75, na.rm = TRUE)) %>%
+  filter(CPUE >= cpue_75th) %>%
+  ungroup()
 
-#Quick plot for visual check 
-world <- st_as_sf(map("world", plot = FALSE, fill = TRUE))
+#plot
+ggplot(cpue75_core, aes(LONGITUDE, LATITUDE)) +
+  geom_point(aes(size = CPUE)) +
+  facet_wrap(~YEAR)
 
-ggplot(world) +
-  geom_sf(fill = "grey90", color = "grey50") +
-  geom_point(data = cpue50_core,
-             aes(x = LONGITUDE, y = LATITUDE),
-             size = 2, shape = 23, fill = "darkred") +
-  coord_sf(xlim = c(-180, -159), ylim = c(54, 64), expand = FALSE) +
-  theme_bw()
-
-#Write csv for stations in 50th percentile of avg CPUE  
-write.csv(cpue50_core, file="./Output/snow_core_area.csv", row.names = FALSE)
+#Write csv for stations in core habitat each year  
+write.csv(cpue75_core, file="./Output/snow_core_area.csv", row.names = FALSE)
 
 #Pull stations for filtering in indicator script
-snow_core <- cpue50_core %>%
-                pull(STATION_ID)
+snow_core <- cpue75_core %>%
+                select(YEAR, STATION_ID)
 
 
 

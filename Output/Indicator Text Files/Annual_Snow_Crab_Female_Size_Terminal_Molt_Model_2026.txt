@@ -1,0 +1,32 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions. 
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Annual_Snow_Crab_Female_Size_Terminal_Molt_Model"
+
+#DESCRIPTION
+"Female size at 50% maturity (carapace width, in mm) is derived from abundance-weighted maturity-at-size ogives and calculated as the size at which the probability mature first crosses 50% each year. Maturity ogives are estimated from spatiotemporal generalized linear mixed effects models in sdmTMB for newshell females only."
+
+#STATUS_TRENDS
+“Mean size at maturity of mature females decreased by 11 mm from 2025 to 2026 following several large immature female cohorts that were observed by the NOAA bottom trawl survey in 2024 and 2025. "
+
+#FACTORS
+"Female snow crab size at 50% maturity is primarily driven by competitive effects from mature female abundance, which decreases size at maturity, while the incidence of large immature females is influenced by both mate limitation and nonlinear temperature effects (Orensanz et al., 2007; Murphy 2021; Ryznar et al., in review).”
+
+#IMPLICATIONS
+"Because fecundity increases with female size, directional downward shifts in size at maturity in females could decrease reproductive potential.”
+
+#REFERENCES
+"Murphy, J. T. 2021. Temporal and spatial variability in size-at-maturity for the eastern Bering Sea snow and Tanner crab (Chionoecetes opilio and C. bairdi). Fisheries Research, 234: 105761.
+Orensanz, J.M., Ernst, B., Armstrong, D.A. 2007. Variation in Female Size and Stage at Maturity in Snow Crab (Chionoecetes Opilio) from the Eastern Bering Sea. Journal of Crustacean Biology, 27:4.
+Ryznar, E.R., Fedewa, E.J., Litzow, M.S. In review. Changing size at maturity in Bering Sea snow crab: the role of mate availability and competition. ICES Journal of Marine Science. "
+
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+47.33754742	49.63879116	62.62571467	63.1078129	50.43798452	49.12213339	47.79976983	45.69221564	42.42320578	47.85647923	57.85246077	49.17963623	48.92897323	49.53258654	57.65657283	56.37366537	48.62496836	55.50467554	55.69224122	56.67116251	51.43522558	54.48329773	51.49517116	46.80663669	47.97530803	51.42601724	62.97573528	53.8312696	53.2831599	46.09300532	46.72091054	37.35902845	NA	50.45118369	52.59427034	53.59723394	62.89180149	57.77123722	46.66182257
