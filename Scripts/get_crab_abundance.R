@@ -127,3 +127,54 @@ recruit_dat %>%
   
 #these are very similar but we'll use model output of 40-50mm males
   #as recruitment response for DSEM indicator analysis
+
+#-----------------------------------------------------------------#
+#Compare model-based recruitment estimates to assessment output 
+#-----------------------------------------------------------------#
+
+#read in recruitment output from repo:
+url <- "https://raw.githubusercontent.com/szuwalski/snow_sept/7846de93d38c2f3536981ab7acb7b655028a2157/Models/26_gmacs_update_newmat_plus_group/gmacs.rep1"
+
+gmacs <- readLines(url)
+
+recruitment <- gmacs %>%
+  .[seq(which(. == "R_y: dataframe") + 2,
+    which(. == "R_y: dataframe") + 45)] %>%
+  tibble(line = .) %>%
+  separate_wider_regex(line,
+    patterns = c(year = "\\d{4}", "\\s+",
+      recruitment = "[-+]?\\d*\\.?\\d+")) %>%
+  mutate(year = as.integer(year),
+    recruitment = as.numeric(recruitment))
+#I think this is extracting what we want, but would be good to verify 
+
+#plot
+recruitment %>%
+  ggplot(aes(year, recruitment)) +
+  geom_point() + 
+  geom_line()
+
+#join to 40-50mm abundance and compare 
+compare_dat <- recruitment %>%
+  filter(year > 1987) %>%
+  mutate(recruitment = recruitment / 1e3) %>%
+  rename(recruitment_mod_output = recruitment) %>%
+  full_join(juvenile_abun_mod)
+
+#plot time series, although magnitude is very different 
+compare_dat %>%
+  pivot_longer(cols= -year, names_to = "dataset", values_to = "abundance") %>%
+  ggplot(aes(x = year, y = abundance, linetype = dataset)) +
+  geom_line(linewidth = 1) +
+  geom_point()
+
+#plot relationship between the two
+ggplot(compare_dat, aes(
+  x = recruitment_mod_output,
+  y = juvenile_abun_mod)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(x = "GMACS recruitment (millions)",
+    y = "40–50 mm juvenile abundance (millions)") 
+#Hmmm let's revisit this when we have a more stable snow crab model 
+
