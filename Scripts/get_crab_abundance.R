@@ -13,7 +13,7 @@ library(tidyverse)
 source("./Scripts/get_crab_data.R")
 
 #-----------------------------------------------#
-#Recruitment estimates  ----
+#Recruitment estimates- survey abundance
 #-----------------------------------------------#
 
 #Snow crab recruitment: 
@@ -98,53 +98,32 @@ juvenile_abun %>%
   theme_bw()
 
 #----------------------------------------------------#
-#Recruitment estimates - immature only ----
+#Recruitment estimates- model based 
 #----------------------------------------------------#
 
-imm_abun <- read.csv("./Output/recruit_abundance_immature.csv")
+#This output is 40-50mm immature male snow crab abundance, 
+  #estimated with sdmTMB maturity workflow
 
-#combine with recruitment timeseries from above
-recruit_dat <- imm_abun %>%
-  mutate(juvenile_abun_mod = as.numeric(juvenile_abun_mod/1e6),
-         prerecruit_abun_mod = as.numeric(prerecruit_abun_mod/1e6),
-         recruit_abun_mod = as.numeric(recruit_abun_mod/1e6)) %>%
+juvenile_abun_mod <- read.csv("./Output/response_4050immabund_model.csv") %>%
+  rename_with(tolower) %>%
+  mutate(juvenile_abun_mod = as.numeric(abundance/1e6)) %>%
+  select(juvenile_abun_mod, year)
+
+#combine with design-based recruitment timeseries from above
+recruit_dat <- recruit_abun %>%
   full_join(prerecruit_abun) %>%
   full_join(juvenile_abun) %>%
-  full_join(recruit_abun) 
+  full_join(juvenile_abun_mod) 
   
-#plot recruits
+#plot 40-50mm males via both workflows
 recruit_dat %>%
-  pivot_longer(2:7, names_to = "method", values_to = "abundance") %>%
-  filter(method %in% c("recruit_abun", "recruit_abun_mod")) %>%
-  ggplot(aes(x = year, y = abundance, group=method)) +
-  geom_point(aes(color=method)) +
-  geom_line(aes(color=method))+
-  labs(y = "Number of crab (millions)", x = "") +
-  theme_bw()
-  
-#plot pre-recruits
-recruit_dat %>%
-  pivot_longer(2:7, names_to = "method", values_to = "abundance") %>%
-  filter(method %in% c("prerecruit_abun", "prerecruit_abun_mod")) %>%
-  ggplot(aes(x = year, y = abundance, group=method)) +
-  geom_point(aes(color=method)) +
-  geom_line(aes(color=method))+
-  labs(y = "Number of crab (millions)", x = "") +
-  theme_bw()
-
-#plot juveniles 
-recruit_dat %>%
-  pivot_longer(2:7, names_to = "method", values_to = "abundance") %>%
+  pivot_longer(-c(year), names_to = "method", values_to = "abundance") %>%
   filter(method %in% c("juvenile_abun", "juvenile_abun_mod")) %>%
   ggplot(aes(x = year, y = abundance, group=method)) +
   geom_point(aes(color=method)) +
   geom_line(aes(color=method))+
   labs(y = "Number of crab (millions)", x = "") +
   theme_bw()
-
-#--------------------------#
-#Save output ----
-#--------------------------#
-
-#Save output
-write_csv(recruit_dat, "./Output/response_recruit_abundance.csv")
+  
+#these are very similar but we'll use model output of 40-50mm males
+  #as recruitment response for DSEM indicator analysis

@@ -3,7 +3,8 @@
 
 #Author: E. Fedewa
 
-#TO DO: finalize diagnostics, d-sep tests, simulation validation 
+#TO DO: d-sep tests, diagnostics development: self-test simulations, retrospective analysis,
+  #LFO cross-validation
 
 #-----------------------------------------#
 #Read in packages and data ----
@@ -26,16 +27,26 @@ library(phylopath)
 library(broom)
 library(gt)
 
+#create folder for model output
+DSEM_date <- "Aug2026"
+
+fig_dir <- file.path("Figs",
+                     paste0("DSEM_", format(BAS_date)))
+
+dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
+
 #Read in indicator data
 indicators <- read.csv("./Output/snow_esp_indicator_timeseries.csv") %>%
                 rename(sea_ice = Mar_Apr_ice_EBS_NBS,
-                       consumption = ebs_consumption)
+                       consumption = ebs_consumption, 
+                       bcd_imm = imm_prev_ebs)
 
-#read in recruitment response - using immature-only estimates from
+#read in recruitment response - using 40-50mm immature-only estimates from
   #new SAP maturity workflow 
-recruit_abun <- read.csv("./Output/snow_4050immabund_model.csv") %>% 
+recruit_abun <- read.csv("./Output/response_4050immabund_model.csv") %>% 
   select(YEAR, ABUNDANCE) %>%
-  rename_with(tolower)
+  rename_with(tolower) %>%
+  rename(recruit_abun = abundance)
 
 #plot response
 recruit_abun %>%
@@ -43,9 +54,6 @@ recruit_abun %>%
   geom_point() +
   geom_line()
   
-#Here: need to clean up abundance output and script 
-
-
 #-----------------------------------------#
 #Functions ----
 #-----------------------------------------#
@@ -63,6 +71,7 @@ plot_histo <- function(data) {
   patchwork::wrap_plots(plots)}
 
 #FUNCTION FOR PLOTTING DSEM MODEL FIT:
+  #Note: change variable names if needed!
 plot_fit <- function(Y, fit, start_year = NULL,
                      vars_to_plot = NULL){
   
@@ -111,8 +120,24 @@ plot_fit <- function(Y, fit, start_year = NULL,
     #combine all variables
   }) %>% bind_rows()
   
-  out$variable <- factor(out$variable,
-                         levels = vars_to_plot)
+  # Variable display names
+  variable_labels <- c(
+    bcd_imm           = "Disease prevalence",
+    chla              = "Chl-a concentration",
+    consumption       = "Pacific cod consumption",
+    energetic_condition = "Energetic condition",
+    extent_0c         = "Cold pool extent",
+    mean_ao           = "Arctic Oscillation",
+    sea_ice           = "Spring sea ice extent",
+    total_invert      = "Benthic prey density",
+    temp_occ          = "Temperature occupied",
+    log_recruit_abun  = "Log recruit abundance")
+  
+  # Rename variables for plotting
+  out$variable <- factor(
+    out$variable,
+    levels = vars_to_plot,
+    labels = variable_labels[vars_to_plot])
   
   #plot output
   ggplot(out, aes(x = year)) +
@@ -136,7 +161,7 @@ extract_dev <- function(fit, model_name) {
   df <- as.data.frame(summary(fit))
   
   # Handle iid vs others (different parameter names)
-  param_name <- if (model_name == "iid") "iid_rec" else "V[log_juvenile_abun]"
+  param_name <- if (model_name == "iid") "iid_rec" else "V[log_recruit_abun]"
   
   df %>%
     filter(name == param_name) %>%
@@ -151,11 +176,9 @@ extract_dev <- function(fit, model_name) {
 #Data wrangling ----
 #-----------------------------------------#
 #join indicator and responses
-recruit_abun %>%
-  select(year, juvenile_abun_mod) %>%
-  full_join(indicators) %>%
-  arrange(year) %>%
-  rename_with(tolower) -> snow_dat
+snow_dat <- recruit_abun %>%
+  full_join(indicators, by = "year") %>%
+  arrange(year)  
 
 #refine indicators to those included in recruitment DAG
 model_dat <- snow_dat %>%
@@ -163,11 +186,11 @@ model_dat <- snow_dat %>%
   mutate(across(everything(), as.numeric)) %>%
   select(year, total_invert, temp_occ, 
          mean_ao, sea_ice, consumption, extent_0c, bcd_imm,
-         energetic_condition, chla, juvenile_abun_mod)
+         energetic_condition, chla, recruit_abun)
 
 #plot covariates
 model_dat %>%
-  select(-juvenile_abun_mod) %>%
+  select(-recruit_abun) %>%
   rename("Juvenile snow crab disease prevalence" = bcd_imm, "Chl-a concentration" = chla,
          "Pacific cod consumption" = consumption,
          "Juvenile snow crab energetic condition" = energetic_condition,
@@ -185,11 +208,10 @@ model_dat %>%
 #Plot distributions of covariates
 plot_histo(model_dat %>% select(-year))
 
-#Scale all variables and transform abundance variables 
+#Scale all variables and log transform recruitment
 scaled_dat <- model_dat %>%
-  mutate(log_invert = log(total_invert),
-         log_juvenile_abun = log(juvenile_abun_mod)) %>%
-  select(-total_invert, -juvenile_abun_mod) %>%
+  mutate(log_recruit_abun = log(recruit_abun)) %>%
+  select(-recruit_abun) %>%
   mutate(across(-year, ~ as.numeric(scale(.))))
   
 #plot distributions after log transformation
@@ -212,6 +234,31 @@ scaled_dat %>%
   facet_wrap(~variable, scales = "free_y", nrow=3) +
   theme_bw()
 
+# final plot with lagged/standardized indicators and log recruitment response
+plot <- scaled_dat %>%
+  rename("Spring Sea Ice Extent" = sea_ice, "Pacific Cod Consumption" = consumption, 
+         "Cold Pool Extent" = extent_0c, "Arctic Oscillation" = mean_ao, 
+         "Disease Prevalence" = bcd_imm, "Benthic Prey Density" = total_invert,
+         "Energetic Condition" = energetic_condition, "Chl-a" = chla, 
+         "Occupancy Temperature" = temp_occ) %>%
+  pivot_longer(cols= -c(year, log_recruit_abun), names_to = "indicator", values_to = "value") 
+
+plot %>%
+  ggplot() +
+  geom_point(aes(year, value), color="blue") + 
+  geom_line(aes(year, value), color="blue") + 
+  geom_line(data = plot %>%
+              select(year, log_recruit_abun), 
+            aes(year, log_recruit_abun), color = "grey50", linetype = 6) +
+  labs(y = "", x = "") +
+  facet_wrap(~ indicator, scales = "free_x") + 
+  theme_bw() +
+  theme(panel.border = element_rect(color = "black", fill = NA),
+        panel.background = element_rect(fill = NA, color = "white"),
+        strip.background = element_blank())
+
+ggsave(filename = paste0("./Figs/DSEM_", DSEM_date, "/covariates.png"))
+
 #-------------------------------#
 #Prep data for dsem models ----
 #-------------------------------#
@@ -220,17 +267,18 @@ data <- scaled_dat %>%
   select(-year) %>%
   ts()
 
-#fix observation error SD = 0.1
-family=list(consumption = gaussian_fixed_sd(sd=.1),
-            extent_0c = gaussian_fixed_sd(sd=.1),
-            bcd_imm = gaussian_fixed_sd(sd=.1),
-            energetic_condition = gaussian_fixed_sd(sd=.1), 
-            chla = gaussian_fixed_sd(sd=.1),
-            log_invert = gaussian_fixed_sd(sd=.1),
-            mean_ao = gaussian_fixed_sd(sd=.1),
-            sea_ice = gaussian_fixed_sd(sd=.1),
-            temp_occ = gaussian_fixed_sd(sd=.1),
-            log_juvenile_abun = gaussian_fixed_sd(sd=.1))
+#all ESP models using family = fixed for Aug 2026 run (default)
+  #If not fixing, set observation error SD = 0.1 and use family = family:
+      #family=list(consumption = gaussian_fixed_sd(sd=.1),
+            #extent_0c = gaussian_fixed_sd(sd=.1),
+            #bcd_imm = gaussian_fixed_sd(sd=.1),
+            #energetic_condition = gaussian_fixed_sd(sd=.1), 
+            #chla = gaussian_fixed_sd(sd=.1),
+            #total_invert = gaussian_fixed_sd(sd=.1),
+            #mean_ao = gaussian_fixed_sd(sd=.1),
+            #sea_ice = gaussian_fixed_sd(sd=.1),
+            #temp_occ = gaussian_fixed_sd(sd=.1),
+            #log_recruit_abun = gaussian_fixed_sd(sd=.1))
             
 #------------------------------------------------#
 # Fit Base IID recruitment model ----
@@ -243,14 +291,13 @@ iid_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-  log_juvenile_abun <-> log_juvenile_abun, 0, iid_rec"
+  log_recruit_abun <-> log_recruit_abun, 0, iid_rec"
 
-iid_fit <- dsem(sem=iid_sem, tsdata=data, 
-                 family=family)
+iid_fit <- dsem(sem=iid_sem, tsdata=data)
 
 summary(iid_fit)
 
@@ -265,14 +312,13 @@ ar_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv"
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv"
 
-ar1_fit <- dsem(sem=ar_sem, tsdata=data, 
-                family=family)
+ar1_fit <- dsem(sem=ar_sem, tsdata=data)
 
 summary(ar1_fit)
 
@@ -287,17 +333,16 @@ ice_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
-  sea_ice -> log_juvenile_abun, 1, icetocond"
+  sea_ice -> log_recruit_abun, 1, icetocond"
 
-ice_fit <- dsem(sem=ice_sem, tsdata=data, 
-                family=family)
+ice_fit <- dsem(sem=ice_sem, tsdata=data)
 
 summary(ice_fit) 
   #single causal relationship collapses down to linear regression in dsem
@@ -311,11 +356,11 @@ summary(ice_fit)
 #download specified DAG from dagitty.net - conditional independencies are 
 #identified based on structure of DAG drawn in dagitty
 climate_dag <- dagitty('dag {
-log_juvenile_abun [outcome,pos="-0.272,0.239"]
+log_recruit_abun [outcome,pos="-0.272,0.239"]
 mean_ao [exposure,pos="-1.490,-1.142"]
 sea_ice [exposure,pos="-0.277,-1.231"]
 mean_ao -> sea_ice
-sea_ice -> log_juvenile_abun
+sea_ice -> log_recruit_abun
 }')
 
 #plot DAG
@@ -330,7 +375,7 @@ paths(climate_dag)
 #2 open causal pathways 
 
 #find adjustment sets for response variable 
-adjustmentSets(climate_dag, exposure="mean_ao", outcome="log_juvenile_abun")
+adjustmentSets(climate_dag, exposure="mean_ao", outcome="log_recruit_abun")
 #This tells us that no covariate adjustment is necessary to identify the causal effect
   #ie there are no open backdoor paths 
 
@@ -343,22 +388,26 @@ climate_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
   mean_ao -> sea_ice, 0, aotoice
-  sea_ice -> log_juvenile_abun, 1, icetorecruit"
+  sea_ice -> log_recruit_abun, 1, icetorecruit"
 
-climate_fit <- dsem(sem=climate_sem, tsdata=data, 
-                       family=family)
+climate_fit <- dsem(sem=climate_sem, tsdata=data)
 
 summary(climate_fit) 
 
 #3) DIAGNOSTICS
+
+#d-sep test
+test_dsep(climate_fit)
+#Failed d-sep test even with AO to recruitment causal pathway added- seems that 
+  #d-sep test is based on the full SEM structure, not just causal pathways?
 
 #Convergence diagnostics:
 #Hessian/SE - should be no hessian warnings or NA SE estimates
@@ -417,16 +466,15 @@ res = DHARMa::createDHARMa(
   observedResponse = unlist(data)[which_use],
   fittedPredictedResponse = fitResp )
 plot(res)
-#need to follow up on this- not sure if dharma residuals are a valid approach 
-  #for a state-space model containing lags? -But I think they work if you use
-  #a fixed family 
+#qq plot looks good, but the residual distribution changes systematically across 
+  #the range of predictors
 
 #4) PLOT MODEL FIT
 
 #specify variables for model being plotted
 #i.e. specify if you don't want to plot variables included only as AR1 process
 causal_vars <- c("sea_ice",
-                 "log_juvenile_abun",
+                 "log_recruit_abun",
                  "mean_ao")
 
 #plot
@@ -442,9 +490,9 @@ plot_fit(data, climate_fit, start_year = 1979, vars_to_plot = causal_vars)
 #identified based on structure of DAG drawn in dagitty
 larval_dag <- dagitty('dag {
 chla [exposure,pos="-0.277,-1.231"]
-log_juvenile_abun [outcome,pos="-0.272,0.239"]
+log_recruit_abun [outcome,pos="-0.272,0.239"]
 sea_ice [exposure,pos="-1.490,-1.142"]
-chla -> log_juvenile_abun
+chla -> log_recruit_abun
 sea_ice -> chla
 }')
 
@@ -471,22 +519,24 @@ larval_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
   sea_ice -> chla, 0, icetochla
-  chla -> log_juvenile_abun, 4, chlatorecruit"
+  chla -> log_recruit_abun, 4, chlatorecruit"
 
-larval_fit <- dsem(sem=larval_sem, tsdata=data, 
-                    family=family)
+larval_fit <- dsem(sem=larval_sem, tsdata=data)
 
 summary(larval_fit) 
 
 #3) DIAGNOSTICS
+
+#d-sep test
+test_dsep(larval_fit)
 
 #Convergence diagnostics:
 #Hessian/SE - should be no hessian warnings or NA SE estimates
@@ -538,7 +588,7 @@ ggplot(res_df, aes(sample = residual)) +
 #specify variables for model being plotted
 #i.e. specify if you don't want to plot variables included only as AR1 process
 causal_vars <- c("sea_ice",
-                 "log_juvenile_abun",
+                 "log_recruit_abun",
                  "chla")
 
 #plot
@@ -554,11 +604,11 @@ plot_fit(data, larval_fit, start_year = 1979, vars_to_plot = causal_vars)
 #identified based on structure of DAG drawn in dagitty
 juvenile_dag <- dagitty('dag {
 energetic_condition [exposure,pos="-0.277,-1.231"]
-log_invert [exposure,pos="-0.811,-0.259"]
-log_juvenile_abun [outcome,pos="-0.272,0.239"]
+total_invert [exposure,pos="-0.811,-0.259"]
+log_recruit_abun [outcome,pos="-0.272,0.239"]
 sea_ice [exposure,pos="-1.490,-1.142"]
-energetic_condition -> log_juvenile_abun
-log_invert -> energetic_condition
+energetic_condition -> log_recruit_abun
+total_invert -> energetic_condition
 sea_ice -> energetic_condition
 }')
 
@@ -585,23 +635,25 @@ juvenile_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
   sea_ice -> energetic_condition, 0, icetocondition
-  log_invert -> energetic_condition, 0, inverttocondition
-  energetic_condition -> log_juvenile_abun, 1, conditiontorecruit"
+  total_invert -> energetic_condition, 0, inverttocondition
+  energetic_condition -> log_recruit_abun, 1, conditiontorecruit"
 
-juvenile_fit <- dsem(sem=juvenile_sem, tsdata=data, 
-                   family=family)
+juvenile_fit <- dsem(sem=juvenile_sem, tsdata=data)
 
 summary(juvenile_fit) 
 
 #3) DIAGNOSTICS
+
+#d-sep test
+test_dsep(juvenile_fit)
 
 #Convergence diagnostics:
 #Hessian/SE - should be no hessian warnings or NA SE estimates
@@ -648,12 +700,26 @@ ggplot(res_df, aes(sample = residual)) +
        y = "Sample Quantiles") +
   theme_minimal()
 
+# calculate leave-one-out residuals and display using DHARMa
+samples = loo_residuals(juvenile_fit, what="samples", track_progress=FALSE)
+which_use = which(!is.na(data))
+fitResp = loo_residuals(juvenile_fit, what="loo", track_progress=FALSE)[,'est']
+simResp = apply(samples, MARGIN=3, FUN=as.vector)[which_use,]
+
+res = DHARMa::createDHARMa(
+  simulatedResponse = simResp,
+  observedResponse = unlist(data)[which_use],
+  fittedPredictedResponse = fitResp )
+plot(res)
+#qq plot looks good, but the residual distribution changes systematically across 
+#the range of predictors
+
 #4) PLOT MODEL FIT
 
 #specify variables for model being plotted
 #i.e. specify if you don't want to plot variables included only as AR1 process
-causal_vars <- c("sea_ice", "log_invert",
-                 "energetic_condition", "log_juvenile_abun")
+causal_vars <- c("sea_ice", "total_invert",
+                 "energetic_condition", "log_recruit_abun")
 
 #plot
 plot_fit(data, juvenile_fit, start_year = 1979, vars_to_plot = causal_vars)
@@ -668,10 +734,10 @@ plot_fit(data, juvenile_fit, start_year = 1979, vars_to_plot = causal_vars)
 #identified based on structure of DAG drawn in dagitty
 habitat_dag <- dagitty('dag {
 cold_pool [exposure,pos="-1.490,-1.142"]
-log_juvenile_abun [outcome,pos="-0.272,0.239"]
+log_recruit_abun [outcome,pos="-0.272,0.239"]
 temp_occ [exposure,pos="-0.277,-1.231"]
 cold_pool -> temp_occ
-temp_occ -> log_juvenile_abun
+temp_occ -> log_recruit_abun
 }
 ')
 
@@ -698,22 +764,24 @@ habitat_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathway
   extent_0c -> temp_occ, 0, cptotempocc
-  temp_occ -> log_juvenile_abun, 1, tempocctorecruit"
+  temp_occ -> log_recruit_abun, 1, tempocctorecruit"
 
-habitat_fit <- dsem(sem=habitat_sem, tsdata=data, 
-                    family=family)
+habitat_fit <- dsem(sem=habitat_sem, tsdata=data)
 
 summary(habitat_fit) 
 
 #3) DIAGNOSTICS
+
+#d-sep test
+test_dsep(habitat_fit)
 
 #Convergence diagnostics:
 #Hessian/SE - should be no hessian warnings or NA SE estimates
@@ -760,12 +828,26 @@ ggplot(res_df, aes(sample = residual)) +
        y = "Sample Quantiles") +
   theme_minimal()
 
+# calculate leave-one-out residuals and display using DHARMa
+samples = loo_residuals(habitat_fit, what="samples", track_progress=FALSE)
+which_use = which(!is.na(data))
+fitResp = loo_residuals(habitat_fit, what="loo", track_progress=FALSE)[,'est']
+simResp = apply(samples, MARGIN=3, FUN=as.vector)[which_use,]
+
+res = DHARMa::createDHARMa(
+  simulatedResponse = simResp,
+  observedResponse = unlist(data)[which_use],
+  fittedPredictedResponse = fitResp )
+plot(res)
+#qq plot looks good, but the residual distribution changes systematically across 
+#the range of predictors
+
 #4) PLOT MODEL FIT
 
 #specify variables for model being plotted
 #i.e. specify if you don't want to plot variables included only as AR1 process
 causal_vars <- c("extent_0c", "temp_occ",
-                 "log_juvenile_abun")
+                 "log_recruit_abun")
 
 #plot
 plot_fit(data, habitat_fit, start_year = 1979, vars_to_plot = causal_vars)
@@ -781,9 +863,9 @@ plot_fit(data, habitat_fit, start_year = 1979, vars_to_plot = causal_vars)
 predation_dag <- dagitty('dag {
 cold_pool [exposure,pos="-1.490,-1.142"]
 consumption [exposure,pos="-0.277,-1.231"]
-log_juvenile_abun [outcome,pos="-0.272,0.239"]
+log_recruit_abun [outcome,pos="-0.272,0.239"]
 cold_pool -> consumption
-consumption -> log_juvenile_abun
+consumption -> log_recruit_abun
 }
 ')
 
@@ -810,22 +892,24 @@ predation_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
   extent_0c -> consumption, 0, cptocod
-  consumption -> log_juvenile_abun, 1, codtorecruit"
+  consumption -> log_recruit_abun, 1, codtorecruit"
 
-predation_fit <- dsem(sem=predation_sem, tsdata=data, 
-                   family=family)
+predation_fit <- dsem(sem=predation_sem, tsdata=data)
 
 summary(predation_fit) 
 
 #3) DIAGNOSTICS
+
+#d-sep test
+test_dsep(predation_fit)
 
 #Convergence diagnostics:
 #Hessian/SE - should be no hessian warnings or NA SE estimates
@@ -877,7 +961,7 @@ ggplot(res_df, aes(sample = residual)) +
 #specify variables for model being plotted
 #i.e. specify if you don't want to plot variables included only as AR1 process
 causal_vars <- c("extent_0c", "consumption",
-                 "log_juvenile_abun")
+                 "log_recruit_abun")
 
 #plot
 plot_fit(data, predation_fit, start_year = 1979, vars_to_plot = causal_vars)
@@ -893,8 +977,8 @@ plot_fit(data, predation_fit, start_year = 1979, vars_to_plot = causal_vars)
 disease_dag <- dagitty('dag {
 bcd [exposure,pos="-0.277,-1.231"]
 cold_pool [exposure,pos="-1.490,-1.142"]
-log_juvenile_abun [outcome,pos="-0.272,0.239"]
-bcd -> log_juvenile_abun
+log_recruit_abun [outcome,pos="-0.272,0.239"]
+bcd -> log_recruit_abun
 cold_pool -> bcd
 }
 ')
@@ -922,22 +1006,24 @@ disease_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
   extent_0c -> bcd_imm, 0, cptobcd
-  bcd_imm -> log_juvenile_abun, 1, bcdtorecruit"
+  bcd_imm -> log_recruit_abun, 1, bcdtorecruit"
 
-disease_fit <- dsem(sem=disease_sem, tsdata=data, 
-                      family=family)
+disease_fit <- dsem(sem=disease_sem, tsdata=data)
 
 summary(disease_fit) 
 
 #3) DIAGNOSTICS
+
+#d-sep test
+test_dsep(disease_fit)
 
 #Convergence diagnostics:
 #Hessian/SE - should be no hessian warnings or NA SE estimates
@@ -989,7 +1075,7 @@ ggplot(res_df, aes(sample = residual)) +
 #specify variables for model being plotted
 #i.e. specify if you don't want to plot variables included only as AR1 process
 causal_vars <- c("extent_0c", "bcd_imm",
-                 "log_juvenile_abun")
+                 "log_recruit_abun")
 
 #plot
 plot_fit(data, disease_fit, start_year = 1979, vars_to_plot = causal_vars)
@@ -1008,18 +1094,18 @@ full_sem <- "
    bcd_imm -> bcd_imm, 1, ar_bcd
    energetic_condition -> energetic_condition, 1, ar_cond 
    chla -> chla, 1, ar_chla
-   log_invert -> log_invert, 1, ar_invert
+   total_invert -> total_invert, 1, ar_invert
    mean_ao -> mean_ao, 1, ar_ao
    sea_ice -> sea_ice, 1, ar_ice
    temp_occ -> temp_occ, 1, ar_temp
-   log_juvenile_abun -> log_juvenile_abun, 1, ar_juv
+   log_recruit_abun -> log_recruit_abun, 1, ar_juv
 
 #causal pathways
   sea_ice -> energetic_condition, 0, icetocond
-  energetic_condition -> log_juvenile_abun, 1, condtorecruit
+  energetic_condition -> log_recruit_abun, 1, condtorecruit
   sea_ice -> extent_0c, 0, icetocp
   extent_0c -> temp_occ, 0, cptotempocc
-  temp_occ -> log_juvenile_abun, 1, tempocctorecruit"
+  temp_occ -> log_recruit_abun, 1, tempocctorecruit"
 
 full_fit <- dsem(sem=full_sem, tsdata=data, 
                     family=family)
@@ -1065,14 +1151,14 @@ model_comp %>%
 
 #put all fitted models in a list
 models <- list(
-  iid = iid_fit,
-  ar1 = ar1_fit,
-  climate_forcing = climate_fit,
-  larval_food_availability = larval_fit,
-  juvenile_food_availability = juvenile_fit,
-  habitat_quality = habitat_fit,
-  predation = predation_fit,
-  disease = disease_fit)
+  IID = iid_fit,
+  AR1 = ar1_fit,
+  "Climate Forcing" = climate_fit,
+  "Larval Food Availability" = larval_fit,
+  "Juvenile Food Availability" = juvenile_fit,
+  "Habitat Quality" = habitat_fit,
+  "Predation" = predation_fit,
+  "Disease" = disease_fit)
 
 # Apply across all models
 dev_comp <- imap_dfr(models, extract_dev) %>%
@@ -1089,6 +1175,8 @@ ggplot(dev_comp, aes(x = model, y = Estimate)) +
   labs(y= "sigma residual", x= "") +
   expand_limits(y = 0) +
   theme(axis.text.x = element_text(angle = 45))
+
+ggsave(filename = paste0("./Figs/DSEM_", DSEM_date, "/sigma_resid.png"))
 
 #compute %reduction in estimated recruitment variance relative to IID model
 iid_var <- dev_comp %>%
@@ -1108,8 +1196,8 @@ reduction_table <- dev_comp %>%
 #extract estimate and p-value for causal pathways 
 paths_of_interest <- subset(summary(full_fit),
                             (first == "sea_ice" & second == "energetic_condition") |
-                              (first == "log_invert" & second == "energetic_condition") |
-                              (first == "energetic_condition" & second == "log_juvenile_abun"))
+                              (first == "total_invert" & second == "energetic_condition") |
+                              (first == "energetic_condition" & second == "log_recruit_abun"))
 
 paths_of_interest[, c("first", "second", "lag", "Estimate", "Std_Error", "p_value")]
 
@@ -1119,7 +1207,7 @@ icetocondition <- paths_of_interest %>%
   pull(Estimate)
 
 conditiontorecruit <- paths_of_interest %>%
-  filter((first == "energetic_condition" & second == "log_juvenile_abun")) %>%
+  filter((first == "energetic_condition" & second == "log_recruit_abun")) %>%
   pull(Estimate)
 
 indirect_ice = icetocondition * conditiontorecruit #0.36
@@ -1146,19 +1234,19 @@ ggplot( effect) +
 #relative importance of variables as predictors of recruitment
   #i.e. at each time step, where proportion of recruitment variability is coming from
 partition_variance(full_fit,
-                   which_response = "log_juvenile_abun",
+                   which_response = "log_recruit_abun",
                    n_times = 10 )
 
 #plot
 var_df <- as.data.frame(partition_variance(full_fit,
-                                           which_response = "log_juvenile_abun",
+                                           which_response = "log_recruit_abun",
                                            n_times = 10)$proportion_variance_explained)
 
 var_df$time <- 1:nrow(var_df)
 
 # Pivot longer
 var_long <- var_df %>%
-  pivot_longer(cols = c(sea_ice, extent_0c, energetic_condition, temp_occ, log_juvenile_abun),
+  pivot_longer(cols = c(sea_ice, extent_0c, energetic_condition, temp_occ, log_recruit_abun),
                names_to = "Component",
                values_to = "Proportion")
 
@@ -1183,7 +1271,7 @@ ggplot(var_long, aes(x = time, y = Proportion, color = Component)) +
 #plot at final time step 10 
 var_df %>%
   filter(time == 10) %>%
-  pivot_longer(cols = c(sea_ice, extent_0c, energetic_condition, temp_occ, log_juvenile_abun),
+  pivot_longer(cols = c(sea_ice, extent_0c, energetic_condition, temp_occ, log_recruit_abun),
                names_to = "Component",
                values_to = "Proportion") %>%
   ggplot(aes(x = Component, y = Proportion, fill = Component)) +
@@ -1198,67 +1286,6 @@ var_df %>%
   filter(time == max(time))
 #at time step 10, AR juvenile abundance explains 12%, sea ice
   #explains 26% and energetic condition explains 61% of recruitment variation
-
-#-----------------------------------------------------------#
-# Evaluate sensitivity to fixed observation error ----
-#-----------------------------------------------------------#
-
-#Note: this uses the old workflow of updating map and parameter outputs in tmb to
-  #fix observation error- needs to be updated and run on models being used for 
-  #causal inference in September! 
-
-#test plausible range of fixed values
-obs_sd_values <- c(0.1, 0.2, 0.3, 0.4, 0.5)
-
-results_list <- list()
-
-#loop through values and refit final model
-for (i in seq_along(obs_sd_values)) {
-  
-  sd_val <- obs_sd_values[i]
-  
-  # update observation error
-  pars_tmp <- pars_final
-  map_tmp  <- map_final
-  
-  pars_tmp$lnsigma_j <- rep(log(sd_val), ncol(data))
-  map_tmp$lnsigma_j  <- factor(rep(NA, ncol(data)))
-  
-  #fit model with each observation error value
-  fit_tmp <- dsem(
-    sem = sem_final,
-    tsdata = data,
-    family = family,
-    estimate_delta0 = FALSE,
-    control = dsem_control(
-      parameters = pars_tmp,
-      map = map_tmp,
-      quiet = TRUE,
-      getsd = TRUE))
-  
-  sm <- as.data.frame(summary(fit_tmp))
-  
-  # extract key pathways
-  effects <- sm %>%
-    filter(name %in% c("icetohybrid", "icetosnow", "snowtohybrid")) %>%
-    mutate(obs_sd = sd_val)
-  
-  results_list[[i]] <- effects
-}
-
-sensitivity_results <- bind_rows(results_list)
-
-#plot sensitivity
-ggplot(sensitivity_results, aes(x = obs_sd, y = Estimate, color = name)) +
-  geom_line() +
-  geom_point() +
-  geom_errorbar(aes(ymin = Estimate - Std_Error,
-                    ymax = Estimate + Std_Error),
-                width = 0.02) +
-  labs(x = "Fixed Observation SD",
-       y = "Effect Size",
-       color = "Path") +
-  theme_minimal()
 
 #-------------------------------------------------#
 # Monte Carlo Simulation-based validation ----
@@ -1491,19 +1518,19 @@ pred <- predict(full_fit, newdata = ts_ext, type = "response")
 #Forecasts represent the causal propagation of system dynamics under specified driver scenarios
 
 pred_last <- pred[nrow(pred), ]
-pred_rec <- pred_last[, "log_juvenile_abun"] 
+pred_rec <- pred_last[, "log_recruit_abun"] 
 
 obs <- scaled_dat %>%
   mutate(type = "Observed")
 
 forecast <- data.frame(
-  log_juvenile_abun = as.numeric(pred),
+  log_recruit_abun = as.numeric(pred),
   year = max(scaled_dat$year) + 1,
   type = "Forecast")
 
 plot_df <- bind_rows(obs, forecast)
 
-ggplot(plot_df, aes(x = year, y = log_juvenile_abun, color = type)) +
+ggplot(plot_df, aes(x = year, y = log_recruit_abun, color = type)) +
   geom_line() +
   geom_point() +
   theme_minimal() +
@@ -1548,13 +1575,13 @@ sim_2023 <- simulate(full_fit_2022, nsim = 500, newdata = ts_ext)
 
 #extract 2023 forecast
 sim_rec <- sapply(sim_2023, function(sim) {
-  sim[nrow(sim), "log_juvenile_abun"]
+  sim[nrow(sim), "log_recruit_abun"]
 })
 
 #observed data for 2023
 obs_2023 <- scaled_dat %>%
   filter(year == 2023) %>%
-  pull(log_juvenile_abun)
+  pull(log_recruit_abun)
 
 #Now let's expand to multiple years
 years <- 2015:2020
@@ -1592,13 +1619,13 @@ hindcast_list <- map(years, function(yr) {
   sims <- simulate(fit, nsim = 500, newdata = ts_ext) 
   
   sim_rec <- sapply(sims, function(sim) { 
-    sim[nrow(sim), "log_juvenile_abun"] 
+    sim[nrow(sim), "log_recruit_abun"] 
   })
   
   #add observed recruitment
   obs <- scaled_dat %>%
     filter(year == yr) %>%
-    pull(log_juvenile_abun)
+    pull(log_recruit_abun)
   
   #return output
   list( forecast = tibble( year = yr, sim = list(as.numeric(sim_rec)), 
@@ -1611,7 +1638,7 @@ plot_df <- forecast_df %>% unnest(sim)
 obs_df <- forecast_df %>% select(year, obs) 
 # Coefficients 
 coef_time <- map_df(hindcast_list, "coefs") 
-path_of_interest <- "extent_0c -> log_juvenile_abun" # adjust as needed 
+path_of_interest <- "extent_0c -> log_recruit_abun" # adjust as needed 
 coef_plot_df <- coef_time %>% 
   filter(path == path_of_interest)
 
