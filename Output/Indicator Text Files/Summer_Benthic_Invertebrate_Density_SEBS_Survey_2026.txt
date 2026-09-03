@@ -1,0 +1,42 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Summer_Benthic_Invertebrate_Density_SEBS_Survey"
+
+#DESCRIPTION
+"Summer benthic invertebrate density (kg/km²), estimated from EBS bottom trawl survey stations 
+                      included in the upper 75th percentile of snow crab CPUE within each year. Invertebrates are 
+                      subset to include species observed in snow crab diet studies, and include brittle stars, 
+                      sea stars, sea cucumber, bivalves, non-commercial crab species, shrimp and polychaetes. 
+                      Proposed sign of the relationship is positive. "
+
+#STATUS_TRENDS
+"Benthic invertebrate density decreased slightly from 2025 to 2026, but remains within 1 SD 
+                        of the time series mean."
+
+#FACTORS
+"Environmental factors such as bottom temperature, primary production and ice cover likely affect 
+                  spatiotemporal variation in epibenthic invertebrates, but the dynamics remain poorly 
+                  understood (Yeung and McConnaughey, 2006)."
+
+#IMPLICATIONS
+"Increases in benthic invertebrate density may suggest the potential for increased prey availability 
+                       for juvenile and adult snow crab. Higher densities may also be indicative of larger scale increases 
+                       in benthic production. However, the bottom trawl survey does not sample key prey items such as polychaetes 
+                       and bivalves well, and this indicator is therefore a relatively coarse proxy for prey quantity for snow crab."
+
+#REFERENCES
+"Yeung, C., and McConnaughey, R.A. 2006. Community structure of eastern Bering Sea epibenthic invertebrates from summer bottom-trawl surveys 1982 to 2002. Marine Ecology Progress Series, 318: 47-63."
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+3476.09159181609	2713.42666073563	2719.33303017241	3160.46277189655	3199.09543603614	2570.35849567045	3464.07168629545	3165.33232661364	2336.03154631034	3604.02404054545	3307.74396130682	2563.50524514943	2904.39659744828	2426.19312832184	3051.12822341379	2985.94244518182	2622.29738488506	3469.93925222988	3581.95592222727	2886.59348354545	3801.66867549425	2888.83066410227	2764.21026186364	2402.81495329545	4383.02544276136	3743.19638919318	3424.26804682955	3296.58772938636	3444.41695336364	3453.99109934091	4069.69323053409	5167.41607385227	NA	4239.42450643182	3268.25612484091	2632.01143979545	3718.32916726136	4618.46951146591	3997.49711602273

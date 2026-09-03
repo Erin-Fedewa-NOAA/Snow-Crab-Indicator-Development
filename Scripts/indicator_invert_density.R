@@ -8,22 +8,12 @@
   #as samplers" approach to capture polychaetes 
 
 #Load groundfish data queried directly from Racebase (see get_gf_data.R script)
-prey <- read.csv("./Data/gf_cpue_timeseries.csv") %>%
+prey <- readRDS("./Data/gf_cpue_timeseries.rds") %>%
   rename(STATION_ID = STATION)
 
 #read in pre-processing script and functions
 source("./Scripts/get_crab_data.R")
 source("./Scripts/make_indicator_text.R")
-
-#stations/years for appending zero-catch data
-haul %>%
-  filter(YEAR>=1988, 
-         STATION_ID %in% snow_core) %>% 
-  select(YEAR, STATION_ID) %>%
-  distinct() -> stations
-
-############################
-#Calculate mean CPUE (in kg/km^2) for each invert guild across years 
 
 # Define guilds by species code
 gersemia <- c(41201:41221)
@@ -48,6 +38,18 @@ ascidians <- c(98000:99909)
 guilds <- c("shrimps", "crabs", "gastropods", "bivalves", "asteroidea", "echinoidea",
             "polychaeta",  "ophiuroidea", "holothuroidea",  "bryozoans")
 
+############################
+#WORKFLOW #1: Use if gf data comes from FOSS, which is not zero-filled 
+
+#stations/years for appending zero-catch data
+haul %>%
+  filter(YEAR>=1988, 
+         STATION_ID %in% snow_core) %>% 
+  select(YEAR, STATION_ID) %>%
+  distinct() -> stations
+
+#Calculate mean CPUE (in kg/km^2) for each invert guild across years 
+
 # Calculate mean CPUE by guild and year  
 ben_prey <- prey %>%
   mutate(GUILD = case_when(SPECIES_CODE %in% polychaeta ~ "polychaeta",
@@ -61,9 +63,9 @@ ben_prey <- prey %>%
                            SPECIES_CODE %in% holothuroidea ~ "holothuroidea",
                            SPECIES_CODE %in% bryozoans ~ "bryozoans",
                            TRUE ~ NA)) %>%             
-  filter(STATION_ID %in% snow_core, 
-         YEAR >= 1988,
+  filter(YEAR >= 1988,
          !is.na(GUILD)) %>%
+  semi_join(snow_core, by = c("YEAR", "STATION_ID")) %>%
   # station-level cpue by guild
   group_by(YEAR, STATION_ID, GUILD) %>%
   summarise(CPUE_KGKM2 = sum(CPUE_KGKM2)) %>%
@@ -109,6 +111,68 @@ ben_prey %>%
   theme_bw()
 
 ##########################################
+#WORFLOW #2: use if gf data comes from GAP products, which is zero-filled
+
+# Calculate mean CPUE by guild and year  
+ben_prey_guild <- prey %>%
+  mutate(GUILD = case_when(SPECIES_CODE %in% polychaeta ~ "polychaeta",
+                           SPECIES_CODE %in% shrimps ~ "shrimps",
+                           SPECIES_CODE %in% crabs ~ "crabs",
+                           SPECIES_CODE %in% gastropods ~ "gastropods",
+                           SPECIES_CODE %in% bivalves ~ "bivalves",
+                           SPECIES_CODE %in% asteroidea ~ "asteroidea",
+                           SPECIES_CODE %in% echinoidea ~ "echinoidea",
+                           SPECIES_CODE %in% ophiuroidea ~ "ophiuroidea",
+                           SPECIES_CODE %in% holothuroidea ~ "holothuroidea",
+                           SPECIES_CODE %in% bryozoans ~ "bryozoans",
+                           TRUE ~ NA)) %>%  
+  filter(YEAR >= 1988,
+         !is.na(GUILD)) %>%
+  semi_join(snow_core, by = c("YEAR", "STATION_ID")) %>%
+  # station-level cpue by guild
+  group_by(YEAR, STATION_ID, GUILD) %>%
+  summarise(CPUE_KGKM2 = sum(CPUE_KGKM2, na.rm = TRUE), .groups = "drop") %>%
+  # annual mean cpue by guild
+  group_by(YEAR, GUILD) %>%
+  summarise(CPUE_KGKM2 = mean(CPUE_KGKM2, na.rm = TRUE), .groups = "drop") 
+
+ben_prey_total <- ben_prey_guild %>%
+  group_by(YEAR) %>%
+  summarise(
+    GUILD = "total_invert",
+    CPUE_KGKM2 = sum(CPUE_KGKM2, na.rm = TRUE), .groups = "drop")
+
+ben_prey <- bind_rows(ben_prey_guild, ben_prey_total)
+
+# Plot 
+ben_prey %>%
+  filter(!GUILD == "total_invert") %>%
+  ggplot(aes(x = YEAR, y = CPUE_KGKM2, group = factor(GUILD))) +
+  geom_point(aes(colour = GUILD)) +
+  geom_line(aes(colour = GUILD)) +
+  labs(y = "Benthic Prey CPUE (kg/km2)", x = "Year") +
+  theme_bw() +
+  theme(legend.title = element_blank())
+
+ben_prey %>%
+  ggplot(aes(x = YEAR, y = CPUE_KGKM2)) +
+  geom_point() +
+  geom_line() +
+  labs(y = "CPUE (kg/km2)", x = "Year") +
+  theme_bw() +
+  theme(legend.title = element_blank()) +
+  facet_wrap(~GUILD, scales = "free_y", nrow = 4)
+
+ben_prey %>%
+  filter(GUILD == "total_invert") %>%
+  ggplot(aes(x = YEAR, y = CPUE_KGKM2)) +
+  geom_point() +
+  geom_line() +
+  geom_hline(aes(yintercept = mean(CPUE_KGKM2, na.rm = TRUE)), linetype = 5) +
+  theme_bw()
+
+
+############################################
 
 ## Save indicator output
 
@@ -136,7 +200,7 @@ description <- paste0("Summer benthic invertebrate density (kg/km²), estimated 
                       sea stars, sea cucumber, bivalves, non-commercial crab species, shrimp and polychaetes. 
                       Proposed sign of the relationship is positive. ")
 
-status_trends <- paste0("Benthic invertebrate density decreased slightly from 2024 to 2025, but remains within 1 SD 
+status_trends <- paste0("Benthic invertebrate density decreased slightly from 2025 to 2026, but remains within 1 SD 
                         of the time series mean.")
 
 factors <- paste0("Environmental factors such as bottom temperature, primary production and ice cover likely affect 
@@ -153,7 +217,7 @@ references <- paste0("Yeung, C., and McConnaughey, R.A. 2006. Community structur
 
 ##INDICATOR DATA
 indicator_data <- indicator_prey %>%
-  rename(indicator = )
+  rename(indicator = total_invert)
 
 #CREATE TEXT FILE
 create_indicator_file(
