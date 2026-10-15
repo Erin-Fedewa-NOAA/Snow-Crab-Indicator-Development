@@ -1,0 +1,41 @@
+#Ecosystem and Socioeconomic Profile (ESP) Contribution template
+#For details on uploading a contribution, field descriptions, sample templates, or other information on the ESP contribution 
+  uploading process, please refer to the ESP Uploader User Guide version 2 (https://drive.google.com/file/d/1H14MKtMSc0uNKvxbtLSx4JsplPHiXsyV/view?usp=sharing) 
+  or contact Kalei Shotwell at kalei.shotwell@noaa.gov for questions.
+#INDICATOR_REVIEW ----------------------------------------------------------------------------------------
+
+#SUBMISSION_YEAR
+2026
+
+#INDICATOR_NAME
+"Summer_Snow_Crab_Consumption_Pacific_cod_Model"
+
+#DESCRIPTION
+"The daily summer consumption of snow crab (mt/day) by Pacific cod in the eastern Bering Sea, 
+                      estimated from Pacific cod diet compositions, EBS trawl survey CPUE, and temperature adjusted 
+                      length-specific maximum consumption rates. Pacific cod consumption estimates include unidentified 
+                      Chionocetes sp. as well as identified C. opilio from stomach contents. Proposed sign of the 
+                      relationship is negative."
+
+#STATUS_TRENDS
+"Daily consumption of juvenile snow crab by Pacific cod in 2026 was very similar to 2025, and remains below the long-term mean."
+
+#FACTORS
+"Predation on snow crab in the eastern Bering Sea is primarily driven by Pacific cod biomass density, 
+                  while cod–crab spatial overlap and cold pool extent exert smaller, size-dependent influences on overall consumption (Reum et al., 2026). 
+                  Annual consumption estimates are also driven by juvenile snow crab population size, and as generalists, Pacific cod tend 
+                  to predate heavily on snow crab when the abundance of small juveniles is high."
+
+#IMPLICATIONS
+"Peaks in Pacific cod consumption of snow crab in 2016 coincided with a very large snow crab recruitment event. 
+                       Recent declines in consumption despite new recruitment following the population collapse in 2021 suggest 
+                       reduced top-down predation pressure and a positive outlook for stock rebuilding."
+
+#REFERENCES
+"Reum, J. C. P., Thorson, J. T., & Fedewa, E. J. (2026). Joint spatiotemporal models for the estimation of prey consumption and predator–prey overlap: Dynamics of Pacific cod predation on snow and Tanner crab in the Eastern Bering Sea. Fisheries Oceanography, 35(3), 370–385."
+#INDICATOR_DATA ----------------------------------------------------------------------------------------
+#YEAR
+1985	1986	1987	1988	1989	1990	1991	1992	1993	1994	1995	1996	1997	1998	1999	2000	2001	2002	2003	2004	2005	2006	2007	2008	2009	2010	2011	2012	2013	2014	2015	2016	2017	2018	2019	2020	2021	2022	2023	2024	2025	2026
+
+#INDICATOR_VALUE
+1386.077029	981.9031842	1218.395912	470.6393807	713.1555368	557.7880328	513.5770824	258.5791734	295.4788307	997.24605	679.393799	840.9059704	837.853245	519.0072971	360.469855	701.9393456	909.3560382	478.8174948	490.5334773	NA	677.5138443	245.1292863	205.748978	458.2409081	247.8976701	231.2298813	456.6581833	368.0306932	657.1532152	1471.963737	2121.092151	2309.872446	777.0477519	1167.463668	727.4601336	NA	770.4009765	527.9227437	320.2472265	399.6969324	341.0137028	346.4826005
